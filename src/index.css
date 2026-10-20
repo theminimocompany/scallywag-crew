@@ -1,0 +1,224 @@
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Scallywag design system — locked 2026-10 (royal Nordic) */
+    --royal: 226 70% 40%;        /* #1F3FAE — rationed to ~10% of area */
+    --deep: 226 69% 30%;         /* #182F82 pressed/active */
+    --ink: 216 48% 12%;          /* #101C2E text */
+    --ice: 220 38% 97%;          /* #F6F8FB page ground */
+    --frost: 220 30% 92%;        /* #E4E9F0 hairlines */
+    --tint: 220 63% 96%;         /* #ECF1FC selected fills */
+    --slate: 216 11% 40%;        /* #5B6572 secondary text */
+
+    --background: var(--ice);
+    --foreground: var(--ink);
+    --card: 0 0% 100%;
+    --card-foreground: var(--ink);
+    --popover: 0 0% 100%;
+    --popover-foreground: var(--ink);
+    --primary: var(--royal);
+    --primary-foreground: 0 0% 100%;
+    --secondary: var(--tint);
+    --secondary-foreground: var(--deep);
+    --muted: var(--ice);
+    --muted-foreground: var(--slate);
+    --accent: var(--tint);
+    --accent-foreground: var(--deep);
+    --destructive: 0 72% 46%;
+    --destructive-foreground: 0 0% 100%;
+    --border: var(--frost);
+    --input: var(--frost);
+    --ring: var(--royal);
+    --radius: 0.625rem;
+  }
+
+  * { @apply border-border; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif;
+    font-feature-settings: 'cv05' 1, 'ss01' 1;
+    min-height: 100dvh;
+  }
+
+  .mono {
+    font-family: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
+    font-feature-settings: 'tnum' 1;
+  }
+
+  ::selection { background: hsl(var(--royal) / 0.16); }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--royal));
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* Letterspaced wordmark */
+  .wordmark {
+    @apply font-semibold uppercase text-foreground;
+    letter-spacing: 0.34em;
+    font-size: 13px;
+  }
+
+  .eyebrow {
+    @apply uppercase font-semibold;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: hsl(var(--slate));
+  }
+
+  /* Buttons — one primary CTA per screen */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 font-medium transition-colors;
+    min-height: 44px;
+    padding: 0 20px;
+    border-radius: 10px;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .btn-primary { @apply btn bg-primary text-primary-foreground hover:bg-[hsl(var(--deep))] active:bg-[hsl(var(--deep))]; }
+  .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-ghost { @apply btn bg-transparent text-foreground border border-border hover:bg-[hsl(var(--tint))]; }
+  .btn-danger { @apply btn bg-transparent border border-border hover:bg-red-50; color: hsl(var(--destructive)); }
+
+  /* Custom checkbox — rounded square (5px) with centered dot on check */
+  .check {
+    appearance: none;
+    width: 22px; height: 22px;
+    border: 1.5px solid hsl(var(--slate) / 0.55);
+    border-radius: 5px;
+    background: #fff;
+    display: inline-grid;
+    place-content: center;
+    cursor: pointer;
+    flex: none;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+  }
+  .check::before {
+    content: '';
+    width: 10px; height: 10px;
+    border-radius: 3px;
+    transform: scale(0);
+    transition: transform 0.15s ease;
+    background: hsl(var(--royal));
+  }
+  .check:checked { border-color: hsl(var(--royal)); background: hsl(var(--tint)); }
+  .check:checked::before { transform: scale(1); }
+
+  /* Tap row (44px) for checkbox lists */
+  .checkrow {
+    @apply flex items-center gap-3 w-full text-left;
+    min-height: 44px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+  }
+  .checkrow:hover { background: hsl(var(--tint)); }
+
+  /* Chip with dot indicator — selected crew, filters */
+  .chip {
+    @apply inline-flex items-center gap-1.5 font-medium;
+    min-height: 32px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 13.5px;
+    border: 1px solid hsl(var(--frost));
+    background: #fff;
+    color: hsl(var(--ink));
+    white-space: nowrap;
+    flex: none;
+  }
+  .chip .dot {
+    width: 6px; height: 6px; border-radius: 999px;
+    background: hsl(var(--slate) / 0.4);
+    flex: none;
+  }
+  .chip-on {
+    border-color: hsl(var(--royal) / 0.35);
+    background: hsl(var(--tint));
+    color: hsl(var(--deep));
+  }
+  .chip-on .dot { background: hsl(var(--royal)); }
+
+  /* 🆕 badge for pending crew */
+  .badge-new {
+    @apply inline-flex items-center font-semibold uppercase;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    color: hsl(var(--deep));
+    background: hsl(var(--tint));
+    border: 1px solid hsl(var(--royal) / 0.3);
+    border-radius: 999px;
+    padding: 2px 8px;
+  }
+
+  /* Card — hairline, no heavy shadows */
+  .panel {
+    @apply bg-card;
+    border: 1px solid hsl(var(--frost));
+    border-radius: 12px;
+  }
+
+  .input {
+    @apply w-full bg-card text-foreground;
+    min-height: 44px;
+    padding: 10px 12px;
+    border: 1px solid hsl(var(--frost));
+    border-radius: 10px;
+    font-size: 15px;
+    transition: border-color 0.15s ease;
+  }
+  .input:focus { border-color: hsl(var(--royal)); outline: none; }
+  .input::placeholder { color: hsl(var(--slate) / 0.6); }
+
+  /* Sticky month separators in long lists */
+  .month-sep {
+    @apply sticky font-semibold uppercase;
+    top: 0;
+    z-index: 10;
+    font-size: 11.5px;
+    letter-spacing: 0.16em;
+    color: hsl(var(--slate));
+    background: hsl(var(--ice) / 0.92);
+    backdrop-filter: blur(6px);
+    padding: 10px 4px 6px;
+    border-bottom: 1px solid hsl(var(--frost));
+  }
+
+  .hairline-b { border-bottom: 1px solid hsl(var(--frost)); }
+
+  .page {
+    @apply mx-auto w-full px-4;
+    max-width: 560px;
+  }
+  .page-wide { max-width: 880px; }
+
+  .fade-in { animation: fadeUp 0.25s ease-out both; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+}
