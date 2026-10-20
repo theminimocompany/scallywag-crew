@@ -1,4 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap');
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
 
 @tailwind base;
 @tailwind components;
@@ -6,126 +11,187 @@
 
 @layer base {
   :root {
-    /* Nordic theme — royal blue on ice white */
-    --royal: 225 72% 40%;        /* #1F3FAE */
-    --navy: 224 55% 18%;
-    --ink: 222 30% 12%;
-    --slate: 220 12% 44%;
-    --frost: 220 25% 90%;
-    --ice: 220 40% 97%;
-    --mist: 221 45% 94%;
-    --tint: 225 72% 95%;
-    --destructive: 0 72% 48%;
+    /* Scallywag design system — locked 2026-10 (royal Nordic) */
+    --royal: 226 70% 40%;        /* #1F3FAE — rationed to ~10% of area */
+    --deep: 226 69% 30%;         /* #182F82 pressed/active */
+    --ink: 216 48% 12%;          /* #101C2E text */
+    --ice: 220 38% 97%;          /* #F6F8FB page ground */
+    --frost: 220 30% 92%;        /* #E4E9F0 hairlines */
+    --tint: 220 63% 96%;         /* #ECF1FC selected fills */
+    --slate: 216 11% 40%;        /* #5B6572 secondary text */
 
-    --background: 220 40% 97%;
-    --foreground: 222 30% 12%;
+    --background: var(--ice);
+    --foreground: var(--ink);
     --card: 0 0% 100%;
-    --card-foreground: 222 30% 12%;
+    --card-foreground: var(--ink);
     --popover: 0 0% 100%;
-    --popover-foreground: 222 30% 12%;
-    --primary: 225 72% 40%;
+    --popover-foreground: var(--ink);
+    --primary: var(--royal);
     --primary-foreground: 0 0% 100%;
-    --secondary: 221 45% 94%;
-    --secondary-foreground: 224 55% 18%;
-    --muted: 221 45% 94%;
-    --muted-foreground: 220 12% 44%;
-    --accent: 225 72% 95%;
-    --accent-foreground: 225 72% 40%;
-    --border: 220 25% 90%;
-    --input: 220 25% 88%;
-    --ring: 225 72% 40%;
-    --radius: 14px;
+    --secondary: var(--tint);
+    --secondary-foreground: var(--deep);
+    --muted: var(--ice);
+    --muted-foreground: var(--slate);
+    --accent: var(--tint);
+    --accent-foreground: var(--deep);
+    --destructive: 0 72% 46%;
+    --destructive-foreground: 0 0% 100%;
+    --border: var(--frost);
+    --input: var(--frost);
+    --ring: var(--royal);
+    --radius: 0.625rem;
   }
 
   * { @apply border-border; }
 
-  html {
-    -webkit-tap-highlight-color: transparent;
-    scroll-behavior: smooth;
-  }
+  html { -webkit-text-size-adjust: 100%; }
 
   body {
-    @apply bg-background text-foreground antialiased;
-    font-family: 'Barlow', system-ui, -apple-system, sans-serif;
-    font-size: 16px;
-    overscroll-behavior-y: none;
-  }
-
-  .font-display, h1, h2, h3 {
-    font-family: 'Barlow Condensed', 'Barlow', sans-serif;
-    letter-spacing: 0.01em;
+    @apply bg-background text-foreground;
+    font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif;
+    font-feature-settings: 'cv05' 1, 'ss01' 1;
+    min-height: 100dvh;
   }
 
   .mono {
-    font-variant-numeric: tabular-nums;
-    font-feature-settings: 'tnum';
+    font-family: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
+    font-feature-settings: 'tnum' 1;
   }
 
-  .min-h-100dvh { min-height: 100dvh; }
+  ::selection { background: hsl(var(--royal) / 0.16); }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--royal));
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }
 
 @layer components {
-  /* Page shell */
-  .page {
-    @apply w-full mx-auto px-4;
-    max-width: 480px;
-  }
-  .page-wide { max-width: 960px; }
-
-  /* Frosted panel card */
-  .panel {
-    @apply rounded-2xl;
-    background: hsl(0 0% 100% / 0.85);
-    backdrop-filter: blur(12px);
-    border: 1px solid hsl(var(--frost));
-    box-shadow: 0 1px 2px hsl(222 30% 12% / 0.04), 0 8px 24px -12px hsl(222 30% 12% / 0.08);
+  /* Letterspaced wordmark */
+  .wordmark {
+    @apply font-semibold uppercase text-foreground;
+    letter-spacing: 0.34em;
+    font-size: 13px;
   }
 
-  /* Primary action button */
-  .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition-all select-none;
-    min-height: 48px;
+  .eyebrow {
+    @apply uppercase font-semibold;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: hsl(var(--slate));
+  }
+
+  /* Buttons — one primary CTA per screen */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 font-medium transition-colors;
+    min-height: 44px;
     padding: 0 20px;
+    border-radius: 10px;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .btn-primary { @apply btn bg-primary text-primary-foreground hover:bg-[hsl(var(--deep))] active:bg-[hsl(var(--deep))]; }
+  .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-ghost { @apply btn bg-transparent text-foreground border border-border hover:bg-[hsl(var(--tint))]; }
+  .btn-danger { @apply btn bg-transparent border border-border hover:bg-red-50; color: hsl(var(--destructive)); }
+
+  /* Custom checkbox — rounded square (5px) with centered dot on check */
+  .check {
+    appearance: none;
+    width: 22px; height: 22px;
+    border: 1.5px solid hsl(var(--slate) / 0.55);
+    border-radius: 5px;
+    background: #fff;
+    display: inline-grid;
+    place-content: center;
+    cursor: pointer;
+    flex: none;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+  }
+  .check::before {
+    content: '';
+    width: 10px; height: 10px;
+    border-radius: 3px;
+    transform: scale(0);
+    transition: transform 0.15s ease;
     background: hsl(var(--royal));
-    color: white;
-    box-shadow: 0 4px 14px -4px hsl(var(--royal) / 0.5);
   }
-  .btn-primary:active { transform: scale(0.97); }
-  .btn-primary:disabled { opacity: 0.45; box-shadow: none; }
+  .check:checked { border-color: hsl(var(--royal)); background: hsl(var(--tint)); }
+  .check:checked::before { transform: scale(1); }
 
-  .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition-all select-none;
+  /* Tap row (44px) for checkbox lists */
+  .checkrow {
+    @apply flex items-center gap-3 w-full text-left;
     min-height: 44px;
-    padding: 0 16px;
-    color: hsl(var(--royal));
+    padding: 10px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+  }
+  .checkrow:hover { background: hsl(var(--tint)); }
+
+  /* Chip with dot indicator — selected crew, filters */
+  .chip {
+    @apply inline-flex items-center gap-1.5 font-medium;
+    min-height: 32px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 13.5px;
+    border: 1px solid hsl(var(--frost));
+    background: #fff;
+    color: hsl(var(--ink));
+    white-space: nowrap;
+    flex: none;
+  }
+  .chip .dot {
+    width: 6px; height: 6px; border-radius: 999px;
+    background: hsl(var(--slate) / 0.4);
+    flex: none;
+  }
+  .chip-on {
+    border-color: hsl(var(--royal) / 0.35);
     background: hsl(var(--tint));
+    color: hsl(var(--deep));
   }
-  .btn-ghost:active { transform: scale(0.97); }
-  .btn-ghost:disabled { opacity: 0.45; }
+  .chip-on .dot { background: hsl(var(--royal)); }
 
-  .btn-danger {
-    @apply inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition-all select-none;
-    min-height: 44px;
-    padding: 0 16px;
-    color: white;
-    background: hsl(var(--destructive));
+  /* 🆕 badge for pending crew */
+  .badge-new {
+    @apply inline-flex items-center font-semibold uppercase;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    color: hsl(var(--deep));
+    background: hsl(var(--tint));
+    border: 1px solid hsl(var(--royal) / 0.3);
+    border-radius: 999px;
+    padding: 2px 8px;
   }
-  .btn-danger:active { transform: scale(0.97); }
-  .btn-danger:disabled { opacity: 0.45; }
 
-  /* Inputs */
+  /* Card — hairline, no heavy shadows */
+  .panel {
+    @apply bg-card;
+    border: 1px solid hsl(var(--frost));
+    border-radius: 12px;
+  }
+
   .input {
-    @apply w-full rounded-xl px-4 transition-colors;
-    min-height: 48px;
-    background: white;
-    border: 1.5px solid hsl(var(--input));
-    font-size: 16px; /* prevents iOS zoom */
+    @apply w-full bg-card text-foreground;
+    min-height: 44px;
+    padding: 10px 12px;
+    border: 1px solid hsl(var(--frost));
+    border-radius: 10px;
+    font-size: 15px;
+    transition: border-color 0.15s ease;
   }
-  .input:focus {
-    outline: none;
-    border-color: hsl(var(--royal));
-    box-shadow: 0 0 0 3px hsl(var(--royal) / 0.15);
-  }
+  .input:focus { border-color: hsl(var(--royal)); outline: none; }
   .input::placeholder { color: hsl(var(--slate) / 0.6); }
 
   /* Sticky month separators in long lists */
@@ -145,91 +211,15 @@
 
   .hairline-b { border-bottom: 1px solid hsl(var(--frost)); }
 
-  /* Checklist row (crew picker, race picker) */
-  .checkrow {
-    @apply flex items-center gap-3 w-full text-left rounded-xl transition-colors cursor-pointer;
-    min-height: 52px;
-    padding: 6px 12px;
+  .page {
+    @apply mx-auto w-full px-4;
+    max-width: 560px;
   }
-  .checkrow:hover { background: hsl(var(--ice)); }
-  .checkrow:has(input:checked) { background: hsl(var(--tint)); }
+  .page-wide { max-width: 880px; }
 
-  .check {
-    @apply rounded-md transition-all flex-none;
-    appearance: none;
-    width: 24px;
-    height: 24px;
-    border: 2px solid hsl(var(--input));
-    background: white;
-    cursor: pointer;
-    position: relative;
-  }
-  .check:checked {
-    background: hsl(var(--royal));
-    border-color: hsl(var(--royal));
-  }
-  .check:checked::after {
-    content: '';
-    position: absolute;
-    left: 7px; top: 3px;
-    width: 6px; height: 11px;
-    border: solid white;
-    border-width: 0 2.5px 2.5px 0;
-    transform: rotate(45deg);
-  }
-
-  /* Small chip / badge */
-  .chip {
-    @apply inline-flex items-center gap-1.5 rounded-full font-medium;
-    font-size: 13px;
-    padding: 4px 10px;
-    border: 1px solid hsl(var(--frost));
-    background: white;
-    color: hsl(var(--slate));
-    min-height: 30px;
-  }
-  .chip-on {
-    border-color: hsl(var(--royal) / 0.35);
-    background: hsl(var(--tint));
-    color: hsl(var(--royal));
-  }
-  .chip .dot {
-    width: 6px; height: 6px; border-radius: 999px;
-    background: currentColor;
-    opacity: 0.7;
-  }
-
-  /* Eyebrow label */
-  .eyebrow {
-    @apply uppercase font-semibold;
-    font-size: 11.5px;
-    letter-spacing: 0.16em;
-    color: hsl(var(--slate));
-  }
-
-  /* Fade-in page transition */
   .fade-in { animation: fadeUp 0.25s ease-out both; }
   @keyframes fadeUp {
     from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: none; }
-  }
-
-  /* Skeleton shimmer */
-  .shimmer {
-    @apply rounded-lg;
-    background: linear-gradient(100deg, hsl(var(--mist)) 40%, hsl(var(--ice)) 50%, hsl(var(--mist)) 60%);
-    background-size: 200% 100%;
-    animation: shimmer 1.4s infinite;
-  }
-  @keyframes shimmer { to { background-position: -200% 0; } }
-
-  /* Floating action bar */
-  .floatbar {
-    @apply fixed left-0 right-0 z-40 px-4;
-    bottom: max(16px, env(safe-area-inset-bottom));
-  }
-  .floatbar-inner {
-    @apply mx-auto;
-    max-width: 448px;
   }
 }
