@@ -34,8 +34,9 @@ export default function PublicSignup() {
 
   const filtered = useMemo(() => {
     if (!dir) return []
-    const q = query.trim().toLowerCase()
-    return q ? dir.filter(d => d.name.toLowerCase().includes(q)) : dir
+    const strip = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    const q = strip(query.trim())
+    return q ? dir.filter(d => strip(d.name).includes(q)) : dir
   }, [dir, query])
 
   // Picked races in chronological order (fetchSchedule returns date-sorted rows)
@@ -57,7 +58,7 @@ export default function PublicSignup() {
     : dir?.find(d => d.crew_id === crewId)?.name ?? ''
 
   function validate(): boolean {
-    if (!newMode && !crewId) { setFormErr('Pick your name from the list first.'); return false }
+    if (!newMode && !crewId) { setFormErr('Search and pick your name first.'); return false }
     if (newMode && newName.trim().length < 2) { setFormErr('Enter your full name.'); return false }
     if (picked.size === 0) { setFormErr('Tick at least one race.'); return false }
     return true
@@ -209,31 +210,50 @@ export default function PublicSignup() {
               <h2 className="eyebrow">1 · Your name</h2>
               {!newMode ? (
                 <>
-                  <input
-                    className="input"
-                    placeholder="Search your name…"
-                    value={query}
-                    onChange={e => setQuery(e.target.value)}
-                    aria-label="Search your name"
-                  />
-                  <div className="panel divide-y divide-[hsl(var(--frost))] max-h-72 overflow-y-auto" role="group" aria-label="Crew names">
-                    {filtered.map(d => (
-                      <label key={d.crew_id} className="checkrow">
-                        <input
-                          type="checkbox"
-                          className="check"
-                          checked={crewId === d.crew_id}
-                          onChange={() => setCrewId(crewId === d.crew_id ? null : d.crew_id)}
-                        />
-                        <span className="font-medium">{d.name}</span>
-                      </label>
-                    ))}
-                    {filtered.length === 0 && (
-                      <p className="p-4 text-sm text-center" style={{ color: 'hsl(var(--slate))' }}>
-                        No match — new to the team? Add yourself below.
-                      </p>
-                    )}
-                  </div>
+                  {crewId ? (
+                    <div className="panel p-4 flex items-center gap-3">
+                      <span
+                        className="grid place-content-center rounded-full shrink-0"
+                        style={{ width: 32, height: 32, background: 'hsl(var(--tint))' }}
+                        aria-hidden
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--royal))" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                      </span>
+                      <span className="font-semibold flex-1 min-w-0" style={{ fontSize: 16 }}>{selectedName}</span>
+                      <button
+                        className="grid place-content-center rounded-full shrink-0"
+                        style={{ width: 32, height: 32, color: 'hsl(var(--slate))', border: '1.5px solid hsl(var(--frost))' }}
+                        onClick={() => { setCrewId(null); setQuery('') }}
+                        aria-label="Change name"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <input
+                        className="input"
+                        placeholder="Search your name…"
+                        value={query}
+                        onChange={e => setQuery(e.target.value)}
+                        aria-label="Search your name"
+                      />
+                      {query.trim() !== '' && filtered.length > 0 && (
+                        <div className="panel divide-y divide-[hsl(var(--frost))] max-h-60 overflow-y-auto" role="group" aria-label="Crew names">
+                          {filtered.map(d => (
+                            <button
+                              key={d.crew_id}
+                              type="button"
+                              className="checkrow w-full text-left"
+                              onClick={() => { setCrewId(d.crew_id); setQuery('') }}
+                            >
+                              <span className="font-medium">{d.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
                   <button className="btn-ghost w-full" onClick={() => { setNewMode(true); setCrewId(null) }}>
                     I'm new to the team
                   </button>
