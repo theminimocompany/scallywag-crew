@@ -5,6 +5,7 @@ import { ConsoleChrome, StatusChip } from '@/components/ConsoleChrome'
 import {
   isSuperAdmin, fetchConsoleTeams, fetchCounts, billingLabel,
   type ConsoleTeam,
+  errText,
 } from '@/lib/consoleApi'
 
 interface Counts { crew: Record<string, number>; races: Record<string, number>; signups: Record<string, number> }
@@ -27,7 +28,7 @@ export default function ConsoleTeams({ email, onSignOut }: { email: string; onSi
       setTeams(t)
       setCounts({ crew, races, signups })
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e))
+      setErr(errText(e))
     }
   }
   useEffect(() => { load() }, [])

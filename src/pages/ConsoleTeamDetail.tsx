@@ -6,6 +6,7 @@ import {
   isSuperAdmin, fetchConsoleTeams, fetchCounts, superListAdmins,
   superSetStatus, superSetBilling, superAddSelfAdmin,
   type ConsoleTeam, type ConsoleAdmin, type BillingPlan,
+  errText,
 } from '@/lib/consoleApi'
 
 export default function ConsoleTeamDetail({ teamId, email, onSignOut }: { teamId: string; email: string; onSignOut: () => void }) {
@@ -39,7 +40,7 @@ export default function ConsoleTeamDetail({ teamId, email, onSignOut }: { teamId
       setPlan(t.tenant_billing?.plan ?? 'free')
       setPaidUntil(t.tenant_billing?.paid_until ?? '')
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e))
+      setErr(errText(e))
     }
   }
   useEffect(() => { load() }, [teamId])
@@ -52,7 +53,7 @@ export default function ConsoleTeamDetail({ teamId, email, onSignOut }: { teamId
       setConfirmSuspend(false)
       await load()
     } catch (e) {
-      setActionErr(e instanceof Error ? e.message : String(e))
+      setActionErr(errText(e))
     } finally {
       setBusy(false)
     }

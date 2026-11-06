@@ -33,13 +33,23 @@ export async function fetchConsoleTeams(): Promise<ConsoleTeam[]> {
   return data as unknown as ConsoleTeam[]
 }
 
-/** Row counts per tenant, aggregated server-side (GROUP BY tenant_id). */
+/** Row counts per tenant. Plain tenant_id reads counted client-side — this
+ * project's PostgREST has aggregate functions disabled (PGRST123), so
+ * select('tenant_id, n:count()') is not an option. Fine at soft-launch volume;
+ * swap for an aggregated SQL RPC if signups rows get large. */
 export async function fetchCounts(table: 'crew' | 'races' | 'signups'): Promise<Record<string, number>> {
-  const { data, error } = await supabase.from(table).select('tenant_id, n:count()')
+  const { data, error } = await supabase.from(table).select('tenant_id')
   if (error) throw error
   const out: Record<string, number> = {}
-  for (const row of data as unknown as { tenant_id: string; n: number }[]) out[row.tenant_id] = row.n
+  for (const row of data as { tenant_id: string }[]) out[row.tenant_id] = (out[row.tenant_id] ?? 0) + 1
   return out
+}
+
+/** Supabase errors are plain objects, not Error instances — read .message. */
+export function errText(e: unknown): string {
+  if (e instanceof Error) return e.message
+  if (e && typeof e === 'object' && 'message' in e) return String((e as { message: unknown }).message)
+  return String(e)
 }
 
 export interface ConsoleAdmin { user_id: string; email: string }
