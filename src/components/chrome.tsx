@@ -14,6 +14,9 @@ export function PublicHeader({ right }: { right?: React.ReactNode }) {
           aria-label={`${teamName} home`}
         >
           {teamName}
+          <span style={{ marginLeft: 8, fontSize: 11, letterSpacing: '0.04em', fontWeight: 600, color: 'hsl(var(--royal))', textTransform: 'none' }}>
+            by Crewlist
+          </span>
         </button>
         <div className="flex items-center gap-2">
           <button
@@ -62,7 +65,12 @@ export function AdminHeader({ onSignOut }: { onSignOut: () => void }) {
   return (
     <header className="hairline-b bg-card/80 backdrop-blur sticky top-0 z-20">
       <div className="page page-wide flex items-center justify-between gap-x-3 gap-y-1 flex-wrap py-2" style={{ minHeight: 56 }}>
-        <span className="wordmark">{teamName}</span>
+        <span className="wordmark">
+          {teamName}
+          <span style={{ marginLeft: 8, fontSize: 11, letterSpacing: '0.04em', fontWeight: 600, color: 'hsl(var(--royal))', textTransform: 'none' }}>
+            by Crewlist
+          </span>
+        </span>
         <nav className="flex items-center gap-1 flex-wrap" aria-label="Admin">
           {items.map(([to, label]) => (
             <button
