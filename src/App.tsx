@@ -13,6 +13,8 @@ import AdminRaceDetail from '@/pages/AdminRaceDetail'
 import AdminRoster from '@/pages/AdminRoster'
 import AdminImport from '@/pages/AdminImport'
 import AdminSettings from '@/pages/AdminSettings'
+import ConsoleTeams from '@/pages/ConsoleTeams'
+import ConsoleTeamDetail from '@/pages/ConsoleTeamDetail'
 import { getTenant } from '@/lib/api'
 import { setTeamName } from '@/lib/tenant'
 
@@ -33,7 +35,11 @@ export default function App() {
       setSession(s)
       if (event === 'SIGNED_IN' && fromEmailLink) {
         window.history.replaceState(null, '', window.location.pathname)
-        navigate(`/t/${TENANT_SLUG}/admin`)
+        // Return to wherever the sign-in was requested (console, invite, …),
+        // falling back to the team admin.
+        const back = sessionStorage.getItem('crewlist_auth_return')
+        sessionStorage.removeItem('crewlist_auth_return')
+        navigate(back || `/t/${TENANT_SLUG}/admin`)
       }
     })
     return () => sub.subscription.unsubscribe()
@@ -50,6 +56,21 @@ export default function App() {
   useEffect(() => {
     if (seg.length === 0) navigate(`/t/${TENANT_SLUG}/schedule`)
   }, [seg.length])
+
+  const signOut = async () => { await supabase.auth.signOut() }
+
+  // ---- Crewlist console (super admin) ----
+  if (seg[0] === 'console') {
+    if (!authReady) return <div className="min-h-100dvh grid place-content-center"><Spinner /></div>
+    if (!session) {
+      sessionStorage.setItem('crewlist_auth_return', window.location.hash || '#/console')
+      return <AdminLogin />
+    }
+    const email = session.user.email ?? ''
+    return seg[1]
+      ? <ConsoleTeamDetail teamId={seg[1]} email={email} onSignOut={signOut} />
+      : <ConsoleTeams email={email} onSignOut={signOut} />
+  }
 
   // everything lives under /t/<slug>/...
   const isTenant = seg[0] === 't' && seg[1] === TENANT_SLUG
@@ -68,7 +89,6 @@ export default function App() {
     if (!authReady) return <div className="min-h-100dvh grid place-content-center"><Spinner /></div>
     if (!session) return <AdminLogin />
     const sub = seg[3] ?? 'races'
-    const signOut = async () => { await supabase.auth.signOut() }
     return (
       <div className="min-h-100dvh flex flex-col">
         <AdminHeader onSignOut={signOut} />
