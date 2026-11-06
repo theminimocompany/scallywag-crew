@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { PublicHeader } from '@/components/chrome'
+import { navigate } from '@/lib/hash'
 
-export default function AdminLogin() {
+export default function AdminLogin({ crewlist = false }: { crewlist?: boolean }) {
   const [mode, setMode] = useState<'password' | 'link'>('password')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -34,11 +35,20 @@ export default function AdminLogin() {
 
   return (
     <div className="min-h-100dvh flex flex-col">
-      <PublicHeader />
+      {crewlist ? (
+        <header className="hairline-b">
+          <div className="page flex items-center justify-between" style={{ minHeight: 56 }}>
+            <button className="wordmark cursor-pointer" style={{ textTransform: 'none' }} onClick={() => navigate('/join')}>Crewlist.</button>
+            <button className="text-xs font-medium cursor-pointer" style={{ color: 'hsl(var(--slate))', minHeight: 44 }} onClick={() => navigate('/join')}>
+              Start a new team
+            </button>
+          </div>
+        </header>
+      ) : <PublicHeader />}
       <main className="page flex-1 py-10 fade-in">
         <div className="panel p-6 space-y-5">
           <div>
-            <h1 className="font-semibold" style={{ fontSize: 22 }}>Team admin</h1>
+            <h1 className="font-semibold" style={{ fontSize: 22 }}>{crewlist ? 'Sign in' : 'Team admin'}</h1>
             <p className="text-sm mt-0.5" style={{ color: 'hsl(var(--slate))' }}>
               {mode === 'password'
                 ? 'Sign in with your email and password.'

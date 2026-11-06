@@ -1,8 +1,8 @@
 import { supabase } from './supabase'
-import { TENANT_SLUG } from './config'
+import { currentTenantSlug } from './tenant'
 
 // ---------- types ----------
-export interface Tenant { id: string; slug: string; name: string; signup_open?: boolean }
+export interface Tenant { id: string; slug: string; name: string; signup_open?: boolean; status?: 'active' | 'suspended' | 'past_due' }
 export interface DirectoryEntry { tenant_slug: string; crew_id: string; name: string }
 export interface ScheduleRow {
   tenant_slug: string; race_id: string; race_name: string
@@ -22,16 +22,17 @@ export interface Signup {
   status: SignupStatus; source: 'form' | 'admin' | 'migration'; created_at: string
 }
 
-let tenantCache: Tenant | null = null
+let tenantCache: { slug: string; tenant: Tenant } | null = null
 export async function getTenant(): Promise<Tenant> {
-  if (tenantCache) return tenantCache
+  const slug = currentTenantSlug()
+  if (tenantCache && tenantCache.slug === slug) return tenantCache.tenant
   // select('*'): stays valid whether or not the settings migration (005)
   // has been applied yet — signup_open is simply absent before it.
   const { data, error } = await supabase
-    .from('tenants').select('*').eq('slug', TENANT_SLUG).single()
+    .from('tenants').select('*').eq('slug', slug).single()
   if (error) throw error
-  tenantCache = data as Tenant
-  return tenantCache
+  tenantCache = { slug, tenant: data as Tenant }
+  return tenantCache.tenant
 }
 
 export function clearTenantCache() {
@@ -41,14 +42,14 @@ export function clearTenantCache() {
 // ---------- public surface ----------
 export async function fetchDirectory(): Promise<DirectoryEntry[]> {
   const { data, error } = await supabase
-    .from('public_crew_directory').select('*').eq('tenant_slug', TENANT_SLUG)
+    .from('public_crew_directory').select('*').eq('tenant_slug', currentTenantSlug())
   if (error) throw error
   return data as DirectoryEntry[]
 }
 
 export async function fetchSchedule(): Promise<ScheduleRow[]> {
   const { data, error } = await supabase
-    .from('public_schedule').select('*').eq('tenant_slug', TENANT_SLUG)
+    .from('public_schedule').select('*').eq('tenant_slug', currentTenantSlug())
   if (error) throw error
   return data as ScheduleRow[]
 }
@@ -209,6 +210,32 @@ export async function listAdmins(): Promise<AdminInfo[]> {
 export async function addAdminByEmail(email: string): Promise<void> {
   const t = await getTenant()
   const { error } = await supabase.rpc('add_tenant_admin', { p_tenant_id: t.id, p_email: email.trim() })
+  if (error) throw error
+}
+
+// ---------- join & onboarding ----------
+export async function checkSlugAvailable(slug: string): Promise<boolean> {
+  const { data, error } = await supabase.from('tenants').select('id').eq('slug', slug).maybeSingle()
+  if (error) throw error
+  return !data
+}
+
+export async function createTeam(name: string, slug: string): Promise<void> {
+  const { error } = await supabase.rpc('create_tenant', { p_name: name, p_slug: slug })
+  if (error) throw error
+}
+
+export async function addRacesBulk(rows: { name: string; race_date: string }[]): Promise<void> {
+  if (!rows.length) return
+  const t = await getTenant()
+  const { error } = await supabase.from('races').insert(rows.map(r => ({ ...r, tenant_id: t.id })))
+  if (error) throw error
+}
+
+export async function addCrewBulk(names: string[]): Promise<void> {
+  if (!names.length) return
+  const t = await getTenant()
+  const { error } = await supabase.from('crew').insert(names.map(name => ({ tenant_id: t.id, name, is_approved: true })))
   if (error) throw error
 }
 

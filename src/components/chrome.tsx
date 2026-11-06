@@ -1,7 +1,6 @@
 import { createPortal } from 'react-dom'
-import { TENANT_SLUG } from '@/lib/config'
 import { navigate } from '@/lib/hash'
-import { useTeamName } from '@/lib/tenant'
+import { useTeamName, currentTenantSlug } from '@/lib/tenant'
 
 export function PublicHeader({ right }: { right?: React.ReactNode }) {
   const teamName = useTeamName()
@@ -10,7 +9,7 @@ export function PublicHeader({ right }: { right?: React.ReactNode }) {
       <div className="page flex items-center justify-between" style={{ minHeight: 56 }}>
         <button
           className="wordmark cursor-pointer"
-          onClick={() => navigate(`/t/${TENANT_SLUG}/schedule`)}
+          onClick={() => navigate(`/t/${currentTenantSlug()}/schedule`)}
           aria-label={`${teamName} home`}
         >
           {teamName}
@@ -22,7 +21,7 @@ export function PublicHeader({ right }: { right?: React.ReactNode }) {
           <button
             className="text-xs font-medium cursor-pointer"
             style={{ color: 'hsl(var(--slate))', minHeight: 44, padding: '0 8px' }}
-            onClick={() => navigate(`/t/${TENANT_SLUG}/admin`)}
+            onClick={() => navigate(`/t/${currentTenantSlug()}/admin`)}
           >
             Admin
           </button>
@@ -34,7 +33,7 @@ export function PublicHeader({ right }: { right?: React.ReactNode }) {
 }
 
 export function PublicTabs({ active }: { active: 'schedule' | 'signup' }) {
-  const base = `/t/${TENANT_SLUG}`
+  const base = `/t/${currentTenantSlug()}`
   return (
     <nav className="flex gap-1 p-1 panel" role="tablist" aria-label="Public pages">
       {(['schedule', 'signup'] as const).map(k => (
@@ -55,7 +54,7 @@ export function PublicTabs({ active }: { active: 'schedule' | 'signup' }) {
 
 export function AdminHeader({ onSignOut }: { onSignOut: () => void }) {
   const teamName = useTeamName()
-  const base = `/t/${TENANT_SLUG}/admin`
+  const base = `/t/${currentTenantSlug()}/admin`
   const items = [
     [`${base}/races`, 'Races'],
     [`${base}/roster`, 'Crew'],
