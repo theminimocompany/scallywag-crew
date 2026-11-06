@@ -157,6 +157,14 @@ export default function AdminRaceDetail({ raceId }: { raceId: string }) {
                 <span className="dot flex-none" style={{ width: 7, height: 7, borderRadius: 999, background: 'hsl(var(--royal))' }} aria-hidden />
                 <span className="flex-1 min-w-0 font-medium truncate">{r.crew.name}</span>
                 <button
+                  className="chip cursor-pointer" style={{ minHeight: 30, fontSize: 12.5 }}
+                  disabled={busyId === r.id}
+                  onClick={() => act(() => setSignupStatus(r.id, 'available'), r.id)}
+                  aria-label={`Deselect ${r.crew.name}`}
+                >
+                  ← Deselect
+                </button>
+                <button
                   className="chip cursor-pointer" style={{ minHeight: 30, fontSize: 12.5, color: 'hsl(var(--destructive))' }}
                   disabled={busyId === r.id}
                   onClick={() => { if (window.confirm(`Remove ${r.crew.name} from this race?`)) act(() => removeSignup(r.id), r.id) }}
