@@ -18,6 +18,7 @@ import ConsoleTeamDetail from '@/pages/ConsoleTeamDetail'
 import Join from '@/pages/Join'
 import AccountHome from '@/pages/AccountHome'
 import Onboard from '@/pages/Onboard'
+import AcceptInvite from '@/pages/AcceptInvite'
 import { getTenant, clearTenantCache } from '@/lib/api'
 import { setTeamName, setTenantSlug } from '@/lib/tenant'
 
@@ -106,6 +107,17 @@ export default function App() {
       return <AdminLogin crewlist />
     }
     return <AccountHome email={session.user.email ?? ''} />
+  }
+
+  // ---- co-admin invite acceptance ----
+  if (seg[0] === 'invite') {
+    if (!authReady) return center(<Spinner />)
+    const token = seg[1] ?? ''
+    if (!session) {
+      sessionStorage.setItem('crewlist_auth_return', window.location.hash || `#/invite/${token}`)
+      return <AdminLogin crewlist />
+    }
+    return <AcceptInvite token={token} email={session.user.email ?? ''} onSignOut={signOut} />
   }
 
   // ---- tenant routes: /t/<slug>/... ----

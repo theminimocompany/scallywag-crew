@@ -1,6 +1,12 @@
 import { supabase } from './supabase'
 import { currentTenantSlug } from './tenant'
 
+/** Supabase errors are plain objects, not necessarily Error instances. */
+export function errorText(e: unknown): string {
+  if (e && typeof e === 'object' && 'message' in e) return String((e as { message: unknown }).message)
+  return String(e)
+}
+
 // ---------- types ----------
 export interface Tenant { id: string; slug: string; name: string; signup_open?: boolean; status?: 'active' | 'suspended' | 'past_due' }
 export interface DirectoryEntry { tenant_slug: string; crew_id: string; name: string }
@@ -211,6 +217,44 @@ export async function addAdminByEmail(email: string): Promise<void> {
   const t = await getTenant()
   const { error } = await supabase.rpc('add_tenant_admin', { p_tenant_id: t.id, p_email: email.trim() })
   if (error) throw error
+}
+
+// ---------- co-admin invites ----------
+export interface InviteInfo { id: string; email: string; status: string; expires_at: string; created_at: string }
+
+export async function listInvites(): Promise<InviteInfo[]> {
+  const t = await getTenant()
+  const { data, error } = await supabase
+    .from('tenant_invites').select('id,email,status,expires_at,created_at')
+    .eq('tenant_id', t.id).order('created_at', { ascending: false })
+  if (error) throw error
+  return data as InviteInfo[]
+}
+
+/** Creates (or refreshes, for resend) an invite. Returns its token. */
+export async function createInvite(email: string): Promise<string> {
+  const t = await getTenant()
+  const { data, error } = await supabase.rpc('create_invite', { p_tenant_id: t.id, p_email: email.trim() })
+  if (error) throw error
+  return data as string
+}
+
+export async function revokeInvite(id: string): Promise<void> {
+  const { error } = await supabase.from('tenant_invites').update({ status: 'revoked' }).eq('id', id)
+  if (error) throw error
+}
+
+export async function removeAdmin(email: string): Promise<void> {
+  const t = await getTenant()
+  const { error } = await supabase.rpc('remove_tenant_admin', { p_tenant_id: t.id, p_email: email })
+  if (error) throw error
+}
+
+/** Accept an invite token; returns the tenant_id you are now admin of. */
+export async function acceptInvite(token: string): Promise<string> {
+  const { data, error } = await supabase.rpc('accept_invite', { p_token: token })
+  if (error) throw error
+  return data as string
 }
 
 // ---------- join & onboarding ----------
