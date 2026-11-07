@@ -159,7 +159,7 @@ export default function Join({ session }: { session: Session | null }) {
               <>
                 <div>
                   <label htmlFor="fullname" className="text-xs uppercase font-medium block mb-1" style={{ letterSpacing: '0.08em', color: 'hsl(var(--slate))' }}>Your name</label>
-                  <input id="fullname" className="input" placeholder="e.g. Chan Tai Man" value={fullName} onChange={e => setFullName(e.target.value)} />
+                  <input id="fullname" className="input" placeholder="e.g. Marco Bellini" value={fullName} onChange={e => setFullName(e.target.value)} />
                 </div>
                 <div>
                   <label htmlFor="email" className="text-xs uppercase font-medium block mb-1" style={{ letterSpacing: '0.08em', color: 'hsl(var(--slate))' }}>Email</label>

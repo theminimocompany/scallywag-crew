@@ -156,7 +156,7 @@ export default function Onboard({ email }: { email: string }) {
               Paste your roster, one name per line — straight from your WhatsApp group works fine.
             </p>
             <textarea className="input" style={{ minHeight: 220, resize: 'vertical' }} value={crewText}
-              placeholder={'Chan Tai Man\nBianca Fong\nChris Collins'} onChange={e => setCrewText(e.target.value)} />
+              placeholder={'Marco Bellini\nSophie Delacroix\nTommy Ashford'} onChange={e => setCrewText(e.target.value)} />
             <div className="flex items-center gap-3 flex-wrap">
               <span className="text-xs font-semibold" style={{ color: 'hsl(var(--royal))', border: '1px solid hsl(var(--royal))', borderRadius: 999, padding: '3px 10px' }}>
                 {crewNames.length} names recognised
