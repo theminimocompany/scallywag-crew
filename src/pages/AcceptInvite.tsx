@@ -47,6 +47,9 @@ export default function AcceptInvite({ token, email, onSignOut }: {
     setErr(null)
     redeemOnce(token)
       .then(accepted => {
+        // Do not replay a cached success if this link is revisited later or by
+        // another signed-in account in the same browser session.
+        redemptions.delete(token)
         if (cancelled) return
         sessionStorage.removeItem('crewlist_auth_return')
         setTeam(accepted)
