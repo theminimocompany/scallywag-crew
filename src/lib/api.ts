@@ -88,24 +88,29 @@ export async function registerCrew(name: string): Promise<string> {
 
 // ---------- admin ----------
 export async function fetchRaces(): Promise<Race[]> {
+  const t = await getTenant()
   const { data, error } = await supabase
-    .from('races').select('*').order('race_date')
+    .from('races').select('*').eq('tenant_id', t.id).order('race_date')
   if (error) throw error
   return data as Race[]
 }
 
 export async function fetchAllSignups(): Promise<Signup[]> {
   // small dataset (~650 rows) — aggregate client-side
+  const t = await getTenant()
   const { data, error } = await supabase
     .from('signups').select('id,tenant_id,crew_id,race_id,status,source,created_at')
+    .eq('tenant_id', t.id)
   if (error) throw error
   return data as Signup[]
 }
 
 export async function fetchRaceSignups(raceId: string): Promise<(Signup & { crew: Pick<Crew, 'id' | 'name' | 'is_approved'> })[]> {
+  const t = await getTenant()
   const { data, error } = await supabase
     .from('signups')
     .select('id,tenant_id,crew_id,race_id,status,source,created_at,crew:crew_id(id,name,is_approved)')
+    .eq('tenant_id', t.id)
     .eq('race_id', raceId)
     .order('created_at')
   if (error) throw error
@@ -113,12 +118,14 @@ export async function fetchRaceSignups(raceId: string): Promise<(Signup & { crew
 }
 
 export async function setSignupStatus(signupId: string, status: SignupStatus): Promise<void> {
-  const { error } = await supabase.from('signups').update({ status }).eq('id', signupId)
+  const t = await getTenant()
+  const { error } = await supabase.from('signups').update({ status }).eq('id', signupId).eq('tenant_id', t.id)
   if (error) throw error
 }
 
 export async function removeSignup(signupId: string): Promise<void> {
-  const { error } = await supabase.from('signups').delete().eq('id', signupId)
+  const t = await getTenant()
+  const { error } = await supabase.from('signups').delete().eq('id', signupId).eq('tenant_id', t.id)
   if (error) throw error
 }
 
@@ -132,27 +139,32 @@ export async function addToSelected(raceId: string, crewId: string): Promise<voi
 }
 
 export async function fetchCrewAll(): Promise<Crew[]> {
-  const { data, error } = await supabase.from('crew').select('*').order('name')
+  const t = await getTenant()
+  const { data, error } = await supabase.from('crew').select('*').eq('tenant_id', t.id).order('name')
   if (error) throw error
   return data as Crew[]
 }
 
 export async function fetchCrewHistory(crewId: string): Promise<(Signup & { races: Pick<Race, 'id' | 'name' | 'race_date'> })[]> {
+  const t = await getTenant()
   const { data, error } = await supabase
     .from('signups')
     .select('id,tenant_id,crew_id,race_id,status,source,created_at,races:race_id(id,name,race_date)')
+    .eq('tenant_id', t.id)
     .eq('crew_id', crewId)
   if (error) throw error
   return data as never[]
 }
 
 export async function approveCrew(crewId: string): Promise<void> {
-  const { error } = await supabase.from('crew').update({ is_approved: true }).eq('id', crewId)
+  const t = await getTenant()
+  const { error } = await supabase.from('crew').update({ is_approved: true }).eq('id', crewId).eq('tenant_id', t.id)
   if (error) throw error
 }
 
 export async function updateCrew(id: string, patch: Partial<Crew>): Promise<void> {
-  const { error } = await supabase.from('crew').update(patch).eq('id', id)
+  const t = await getTenant()
+  const { error } = await supabase.from('crew').update(patch).eq('id', id).eq('tenant_id', t.id)
   if (error) throw error
 }
 
@@ -164,7 +176,8 @@ export async function addCrew(fields: { name: string; phone?: string; emergency_
 
 export async function deleteCrew(crewId: string): Promise<void> {
   // signups.crew_id is ON DELETE CASCADE — the person's signups go with them
-  const { error } = await supabase.from('crew').delete().eq('id', crewId)
+  const t = await getTenant()
+  const { error } = await supabase.from('crew').delete().eq('id', crewId).eq('tenant_id', t.id)
   if (error) throw error
 }
 
@@ -175,8 +188,15 @@ export async function addRace(name: string, raceDate: string): Promise<void> {
 }
 
 export async function deleteRace(raceId: string): Promise<void> {
-  const { error } = await supabase.from('races').delete().eq('id', raceId)
+  const t = await getTenant()
+  const { data, error } = await supabase
+    .from('races')
+    .delete()
+    .eq('id', raceId)
+    .eq('tenant_id', t.id)
+    .select('id')
   if (error) throw error
+  if (data.length !== 1) throw new Error('Race was not deleted. It may belong to another team or no longer exist.')
 }
 
 // ---------- settings (admin) ----------
@@ -195,12 +215,14 @@ export async function setSignupOpen(open: boolean): Promise<void> {
 }
 
 export async function setRaceHidden(raceId: string, hidden: boolean): Promise<void> {
-  const { error } = await supabase.from('races').update({ is_hidden: hidden }).eq('id', raceId)
+  const t = await getTenant()
+  const { error } = await supabase.from('races').update({ is_hidden: hidden }).eq('id', raceId).eq('tenant_id', t.id)
   if (error) throw error
 }
 
 export async function setRaceSignupClosed(raceId: string, closed: boolean): Promise<void> {
-  const { error } = await supabase.from('races').update({ signup_closed: closed }).eq('id', raceId)
+  const t = await getTenant()
+  const { error } = await supabase.from('races').update({ signup_closed: closed }).eq('id', raceId).eq('tenant_id', t.id)
   if (error) throw error
 }
 
@@ -240,7 +262,8 @@ export async function createInvite(email: string): Promise<string> {
 }
 
 export async function revokeInvite(id: string): Promise<void> {
-  const { error } = await supabase.from('tenant_invites').update({ status: 'revoked' }).eq('id', id)
+  const t = await getTenant()
+  const { error } = await supabase.from('tenant_invites').update({ status: 'revoked' }).eq('id', id).eq('tenant_id', t.id)
   if (error) throw error
 }
 
