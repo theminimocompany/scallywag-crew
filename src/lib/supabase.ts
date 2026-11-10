@@ -1,11 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config'
 
-// Implicit recovery callbacks append #access_token=… to the redirect URL.
-// Older reset emails placed that fragment after our hash route, producing
-// #/reset-password#access_token=…, which neither the router nor Supabase can
-// parse. Normalize those links before creating the auth client.
 const malformedRecoveryPrefix = '#/reset-password#'
+
 if (window.location.hash.startsWith(malformedRecoveryPrefix)) {
   const url = new URL(window.location.href)
   url.hash = window.location.hash.slice(malformedRecoveryPrefix.length)
@@ -13,7 +10,7 @@ if (window.location.hash.startsWith(malformedRecoveryPrefix)) {
   window.history.replaceState(null, '', url)
 }
 
-// Signup and magic-link emails can also use implicit #access_token=… callbacks.
+// Signup confirmation emails can also use implicit #access_token=… callbacks.
 // Mark those URLs before Supabase consumes the fragment so the router can still
 // recognize the email callback and restore its saved destination afterwards.
 if (window.location.hash.startsWith('#access_token=')) {

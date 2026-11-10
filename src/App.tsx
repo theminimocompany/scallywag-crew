@@ -19,6 +19,7 @@ import Join from '@/pages/Join'
 import AccountHome from '@/pages/AccountHome'
 import Onboard from '@/pages/Onboard'
 import AcceptInvite from '@/pages/AcceptInvite'
+import InviteAuth from '@/pages/InviteAuth'
 import ForgotPassword from '@/pages/ForgotPassword'
 import ResetPassword from '@/pages/ResetPassword'
 import { getTenant, clearTenantCache } from '@/lib/api'
@@ -156,7 +157,7 @@ export default function App() {
     const token = seg[1] ?? ''
     if (!session) {
       sessionStorage.setItem('crewlist_auth_return', window.location.hash || `#/invite/${token}`)
-      return <AdminLogin crewlist />
+      return <InviteAuth />
     }
     return <AcceptInvite token={token} email={session.user.email ?? ''} onSignOut={signOut} />
   }
