@@ -58,6 +58,8 @@ export default function AdminLogin({ crewlist = false }: { crewlist?: boolean })
             style={{ color: 'hsl(var(--royal))', minHeight: 44 }}
             onClick={() => {
               sessionStorage.setItem('crewlist_auth_return', window.location.hash || '#/login')
+              sessionStorage.removeItem('crewlist_recovery_email')
+              sessionStorage.removeItem('crewlist_recovery_invite')
               navigate('/forgot-password')
             }}
           >

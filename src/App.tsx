@@ -40,7 +40,11 @@ export default function App() {
     // PKCE emails carry ?code=…. Implicit emails are marked with
     // ?auth_callback=1 before Supabase consumes their #access_token=… fragment.
     const params = new URLSearchParams(window.location.search)
-    const fromEmailLink = params.has('code') || params.get('auth_callback') === '1'
+    const inviteToken = params.get('invite')
+    const inviteReturn = inviteToken && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(inviteToken)
+      ? `#/invite/${inviteToken}`
+      : null
+    const fromEmailLink = params.has('code') || params.get('auth_callback') === '1' || !!inviteReturn
     const fromRecoveryLink = segments(window.location.hash)[0] === 'reset-password'
       || params.get('recovery') === '1'
     let emailReturnHandled = false
@@ -49,40 +53,78 @@ export default function App() {
       if (emailReturnHandled || !fromEmailLink || fromRecoveryLink) return
       emailReturnHandled = true
       window.history.replaceState(null, '', window.location.pathname)
-      const back = sessionStorage.getItem('crewlist_auth_return')
+      const back = inviteReturn || sessionStorage.getItem('crewlist_auth_return')
       sessionStorage.removeItem('crewlist_auth_return')
       navigate(back || `/t/${TENANT_SLUG}/admin`)
     }
 
+    const failEmailReturn = () => {
+      if (emailReturnHandled || !fromEmailLink || fromRecoveryLink) return
+      emailReturnHandled = true
+      setSession(null)
+      setAuthReady(true)
+      if (inviteReturn) {
+        sessionStorage.setItem('crewlist_invite_notice', 'We couldn’t sign you in automatically. If your email is already confirmed, sign in with your password to continue.')
+      }
+      window.history.replaceState(null, '', window.location.pathname)
+      const back = inviteReturn || sessionStorage.getItem('crewlist_auth_return') || '/login'
+      navigate(back)
+    }
+
+    // A stalled Auth callback must never become a permanent loading page. The
+    // invitation token in the URL lets the recipient continue with a password
+    // even when the email opened in another browser or storage was unavailable.
+    const callbackWatchdog = window.setTimeout(() => {
+      if (fromRecoveryLink) {
+        if (inviteReturn) sessionStorage.setItem('crewlist_auth_return', inviteReturn)
+        setAuthReady(true)
+        window.history.replaceState(null, '', window.location.pathname)
+        navigate('/reset-password')
+      } else {
+        failEmailReturn()
+      }
+    }, 12000)
+
     supabase.auth.getSession().then(({ data }) => {
+      window.clearTimeout(callbackWatchdog)
       setSession(data.session)
       setAuthReady(true)
       // Auth events can fire before this React subscription exists. Resolve
       // emailed callbacks here as well so routing never depends on event timing.
       if (fromRecoveryLink) {
+        if (inviteReturn) sessionStorage.setItem('crewlist_auth_return', inviteReturn)
         window.history.replaceState(null, '', window.location.pathname)
         navigate('/reset-password')
       } else if (fromEmailLink) {
-        if (data.session) {
-          finishEmailReturn()
-        } else {
-          // Expired or invalid callbacks must not leave a permanent spinner.
-          emailReturnHandled = true
-          window.history.replaceState(null, '', window.location.pathname)
-          navigate(sessionStorage.getItem('crewlist_auth_return') || '/login')
-        }
+        if (data.session) finishEmailReturn()
+        else failEmailReturn()
+      }
+    }).catch(() => {
+      window.clearTimeout(callbackWatchdog)
+      setSession(null)
+      setAuthReady(true)
+      if (fromRecoveryLink) {
+        if (inviteReturn) sessionStorage.setItem('crewlist_auth_return', inviteReturn)
+        window.history.replaceState(null, '', window.location.pathname)
+        navigate('/reset-password')
+      } else {
+        failEmailReturn()
       }
     })
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s)
       if (event === 'PASSWORD_RECOVERY') {
+        if (inviteReturn) sessionStorage.setItem('crewlist_auth_return', inviteReturn)
         window.history.replaceState(null, '', window.location.pathname)
         navigate('/reset-password')
         return
       }
       if (event === 'SIGNED_IN') finishEmailReturn()
     })
-    return () => sub.subscription.unsubscribe()
+    return () => {
+      window.clearTimeout(callbackWatchdog)
+      sub.subscription.unsubscribe()
+    }
   }, [])
 
   const seg = segments(hash)
@@ -113,6 +155,7 @@ export default function App() {
     const authCallback = params.has('code')
       || params.get('auth_callback') === '1'
       || params.get('recovery') === '1'
+      || params.has('invite')
     if (seg.length === 0 && !authCallback) navigate(`/t/${TENANT_SLUG}/schedule`)
   }, [seg.length])
 
@@ -157,7 +200,7 @@ export default function App() {
     const token = seg[1] ?? ''
     if (!session) {
       sessionStorage.setItem('crewlist_auth_return', window.location.hash || `#/invite/${token}`)
-      return <InviteAuth />
+      return <InviteAuth token={token} />
     }
     return <AcceptInvite token={token} email={session.user.email ?? ''} onSignOut={signOut} />
   }

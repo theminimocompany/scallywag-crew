@@ -4,7 +4,10 @@ import { navigate } from '@/lib/hash'
 import { ErrText } from '@/components/bits'
 
 export default function ForgotPassword() {
-  const [email, setEmail] = useState('')
+  const lockedEmail = sessionStorage.getItem('crewlist_recovery_email') ?? ''
+  const recoveryInvite = sessionStorage.getItem('crewlist_recovery_invite') ?? ''
+  const validRecoveryInvite = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(recoveryInvite)
+  const [email, setEmail] = useState(lockedEmail)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [sent, setSent] = useState(false)
@@ -20,8 +23,11 @@ export default function ForgotPassword() {
     // Keep the callback out of the hash route. Implicit recovery returns
     // #access_token=… and PKCE returns ?code=…; both would corrupt a
     // #/reset-password destination. App.tsx routes to the form after auth.
+    const redirect = new URL(`${window.location.origin}${window.location.pathname}`)
+    redirect.searchParams.set('recovery', '1')
+    if (lockedEmail && validRecoveryInvite) redirect.searchParams.set('invite', recoveryInvite)
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}${window.location.pathname}?recovery=1`,
+      redirectTo: redirect.toString(),
     })
     setBusy(false)
     if (error) return setErr(error.message)
@@ -42,7 +48,7 @@ export default function ForgotPassword() {
         <div className="panel p-6 space-y-5">
           <div>
             <h1 className="font-semibold" style={{ fontSize: 22 }}>Reset your password</h1>
-            <p className="text-sm mt-1 leading-relaxed" style={{ color: 'hsl(var(--slate))' }}>
+            <p className="text-sm mt-0.5 leading-relaxed" style={{ color: 'hsl(var(--slate))' }}>
               {sent ? 'Check your email for a secure reset link.' : 'Enter your account email and we’ll send you a reset link.'}
             </p>
           </div>
@@ -66,11 +72,18 @@ export default function ForgotPassword() {
                   type="email"
                   required
                   autoComplete="email"
-                  autoFocus
+                  autoFocus={!lockedEmail}
+                  readOnly={!!lockedEmail}
+                  aria-readonly={!!lockedEmail}
                   placeholder="you@boat.com"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                 />
+                {lockedEmail && (
+                  <p className="text-xs mt-1" style={{ color: 'hsl(var(--slate))' }}>
+                    This address is fixed by your invitation.
+                  </p>
+                )}
               </div>
               {err && <ErrText>{err}</ErrText>}
               <button className="btn-primary w-full" disabled={busy} type="submit">

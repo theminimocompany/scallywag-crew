@@ -273,6 +273,13 @@ export async function removeAdmin(email: string): Promise<void> {
   if (error) throw error
 }
 
+/** Read only the email attached to a valid, unexpired invite token. */
+export async function fetchInviteEmail(token: string): Promise<string | null> {
+  const { data, error } = await supabase.rpc('get_invite_email', { p_token: token })
+  if (error) throw error
+  return data as string | null
+}
+
 /** Accept an invite token; returns the tenant_id you are now admin of. */
 export async function acceptInvite(token: string): Promise<string> {
   const { data, error } = await supabase.rpc('accept_invite', { p_token: token })

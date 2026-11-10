@@ -52,6 +52,8 @@ export default function AcceptInvite({ token, email, onSignOut }: {
         redemptions.delete(token)
         if (cancelled) return
         sessionStorage.removeItem('crewlist_auth_return')
+        sessionStorage.removeItem('crewlist_recovery_email')
+        sessionStorage.removeItem('crewlist_recovery_invite')
         setTeam(accepted)
         setStage('success')
       })

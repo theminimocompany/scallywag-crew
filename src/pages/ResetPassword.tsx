@@ -41,6 +41,8 @@ export default function ResetPassword({ session, authReady }: { session: Session
   function continueToDestination() {
     const back = sessionStorage.getItem('crewlist_auth_return') || '#/login'
     sessionStorage.removeItem('crewlist_auth_return')
+    sessionStorage.removeItem('crewlist_recovery_email')
+    sessionStorage.removeItem('crewlist_recovery_invite')
     navigate(back)
   }
 
