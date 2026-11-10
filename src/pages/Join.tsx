@@ -73,30 +73,22 @@ export default function Join({ session }: { session: Session | null }) {
 
     if (session) return // signed-in path handled by the effect above
 
+    if (password.length < 8) return setErr('Use at least 8 characters for your password.')
+
     setBusy(true)
-    if (password) {
-      const { data, error } = await supabase.auth.signUp({
-        email, password,
-        options: {
-          data: { full_name: fullName.trim() },
-          emailRedirectTo: `${window.location.origin}${window.location.pathname}`,
-        },
-      })
-      setBusy(false)
-      if (error) return setErr(error.message)
-      if (data.user && (data.user.identities?.length ?? 1) === 0) {
-        return setErr('This email already has an account — use Sign in at the top right.')
-      }
-      if (!data.session) setSent(true) // confirm-email required; link returns here
-    } else {
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: { emailRedirectTo: `${window.location.origin}${window.location.pathname}` },
-      })
-      setBusy(false)
-      if (error) return setErr(error.message)
-      setSent(true)
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(), password,
+      options: {
+        data: { full_name: fullName.trim() },
+        emailRedirectTo: `${window.location.origin}${window.location.pathname}`,
+      },
+    })
+    setBusy(false)
+    if (error) return setErr(error.message)
+    if (data.user && (data.user.identities?.length ?? 1) === 0) {
+      return setErr('This email already has an account — use Sign in at the top right.')
     }
+    if (!data.session) setSent(true) // confirm-email required; link returns here
   }
 
   return (
@@ -167,9 +159,9 @@ export default function Join({ session }: { session: Session | null }) {
                 </div>
                 <div>
                   <label htmlFor="password" className="text-xs uppercase font-medium block mb-1" style={{ letterSpacing: '0.08em', color: 'hsl(var(--slate))' }}>Password</label>
-                  <input id="password" className="input" type="password" minLength={8} autoComplete="new-password" placeholder="At least 8 characters" value={password} onChange={e => setPassword(e.target.value)} />
+                  <input id="password" className="input" type="password" required minLength={8} autoComplete="new-password" placeholder="At least 8 characters" value={password} onChange={e => setPassword(e.target.value)} />
                   <p className="text-xs mt-1" style={{ color: 'hsl(var(--slate))' }}>
-                    Prefer no password? Leave it blank and we'll email you a <span className="font-medium" style={{ color: 'hsl(var(--ink))' }}>magic link</span> instead — you can always add a password later.
+                    Use at least 8 characters. We’ll email you a confirmation link before creating the team.
                   </p>
                 </div>
               </>

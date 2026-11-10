@@ -292,7 +292,7 @@ export default function AdminSettings() {
                   <span className="text-xs" style={{ color: 'hsl(var(--slate))' }}>expires {i.expires_at.slice(0, 10)}</span>
                   <span className="ml-auto flex gap-3">
                     <button className="text-xs font-medium cursor-pointer" style={{ color: 'hsl(var(--royal))', minHeight: 36 }} disabled={addingAdmin} onClick={() => invite(i.email)}>
-                      Resend
+                      Refresh link
                     </button>
                     <button className="text-xs font-medium cursor-pointer" style={{ color: 'hsl(var(--destructive))', minHeight: 36 }} onClick={() => revoke(i.id)}>
                       Revoke
@@ -328,13 +328,13 @@ export default function AdminSettings() {
               </button>
               <p className="text-xs" style={{ color: 'hsl(var(--slate))' }}>
                 Send it by WhatsApp — it expires in 7 days and only works for the invited email.
-                Branded email invitations arrive once Brevo is connected.
+                Crewlist does not email this invitation yet, so send the link yourself.
               </p>
             </div>
           )}
           <p className="text-xs" style={{ color: 'hsl(var(--slate))' }}>
-            The co-admin opens the link, signs in (password or email link), and lands in this console.
-            Removing the last admin is blocked — every team keeps at least one.
+            The co-admin opens the link, creates a password or signs in, confirms their email if needed,
+            and lands in this console. Removing the last admin is blocked — every team keeps at least one.
           </p>
         </div>
       </section>
