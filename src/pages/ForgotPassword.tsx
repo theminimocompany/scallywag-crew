@@ -17,8 +17,11 @@ export default function ForgotPassword() {
     e.preventDefault()
     setBusy(true)
     setErr(null)
+    // Keep the callback out of the hash route. Implicit recovery returns
+    // #access_token=… and PKCE returns ?code=…; both would corrupt a
+    // #/reset-password destination. App.tsx routes to the form after auth.
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}${window.location.pathname}#/reset-password`,
+      redirectTo: `${window.location.origin}${window.location.pathname}?recovery=1`,
     })
     setBusy(false)
     if (error) return setErr(error.message)

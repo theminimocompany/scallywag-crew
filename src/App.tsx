@@ -40,9 +40,16 @@ export default function App() {
     // form rather than being swallowed by the normal post-confirmation return.
     const fromEmailLink = new URLSearchParams(window.location.search).has('code')
     const fromRecoveryLink = segments(window.location.hash)[0] === 'reset-password'
+      || new URLSearchParams(window.location.search).get('recovery') === '1'
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
       setAuthReady(true)
+      // The auth event can fire before this React subscription exists. The
+      // explicit recovery query makes the callback deterministic either way.
+      if (fromRecoveryLink) {
+        window.history.replaceState(null, '', window.location.pathname)
+        navigate('/reset-password')
+      }
     })
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s)
@@ -84,7 +91,8 @@ export default function App() {
 
   // default route → Scallywag public schedule (the owner's team)
   useEffect(() => {
-    if (seg.length === 0) navigate(`/t/${TENANT_SLUG}/schedule`)
+    const recoveryCallback = new URLSearchParams(window.location.search).get('recovery') === '1'
+    if (seg.length === 0 && !recoveryCallback) navigate(`/t/${TENANT_SLUG}/schedule`)
   }, [seg.length])
 
   const signOut = async () => { await supabase.auth.signOut() }
