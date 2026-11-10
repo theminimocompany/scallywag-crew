@@ -13,4 +13,13 @@ if (window.location.hash.startsWith(malformedRecoveryPrefix)) {
   window.history.replaceState(null, '', url)
 }
 
+// Signup and magic-link emails can also use implicit #access_token=… callbacks.
+// Mark those URLs before Supabase consumes the fragment so the router can still
+// recognize the email callback and restore its saved destination afterwards.
+if (window.location.hash.startsWith('#access_token=')) {
+  const url = new URL(window.location.href)
+  url.searchParams.set('auth_callback', '1')
+  window.history.replaceState(null, '', url)
+}
+
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
