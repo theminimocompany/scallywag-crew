@@ -253,7 +253,7 @@ export async function listInvites(): Promise<InviteInfo[]> {
   return data as InviteInfo[]
 }
 
-/** Creates (or refreshes, for resend) an invite. Returns its token. */
+/** Creates (or refreshes) an invite. Returns its token. */
 export async function createInvite(email: string): Promise<string> {
   const t = await getTenant()
   const { data, error } = await supabase.rpc('create_invite', { p_tenant_id: t.id, p_email: email.trim() })
