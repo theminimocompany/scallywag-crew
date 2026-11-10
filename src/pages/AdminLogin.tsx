@@ -57,20 +57,33 @@ export default function AdminLogin({ crewlist = false }: { crewlist?: boolean })
           </div>
 
           {mode === 'password' ? (
-            <form onSubmit={signIn} className="space-y-3">
-              <input
-                className="input" type="email" required autoComplete="email"
-                placeholder="Email" value={email} onChange={e => setEmail(e.target.value)}
-              />
-              <input
-                className="input" type="password" required autoComplete="current-password"
-                placeholder="Password" value={password} onChange={e => setPassword(e.target.value)}
-              />
-              {err && <p className="text-sm font-medium" role="alert" style={{ color: 'hsl(var(--destructive))' }}>{err}</p>}
-              <button className="btn-primary w-full" disabled={busy} type="submit">
-                {busy ? 'Signing in…' : 'Sign in'}
+            <>
+              <form onSubmit={signIn} className="space-y-3">
+                <input
+                  className="input" type="email" required autoComplete="email"
+                  placeholder="Email" value={email} onChange={e => setEmail(e.target.value)}
+                />
+                <input
+                  className="input" type="password" required autoComplete="current-password"
+                  placeholder="Password" value={password} onChange={e => setPassword(e.target.value)}
+                />
+                {err && <p className="text-sm font-medium" role="alert" style={{ color: 'hsl(var(--destructive))' }}>{err}</p>}
+                <button className="btn-primary w-full" disabled={busy} type="submit">
+                  {busy ? 'Signing in…' : 'Sign in'}
+                </button>
+              </form>
+              <button
+                type="button"
+                className="text-xs font-medium cursor-pointer block w-full text-right"
+                style={{ color: 'hsl(var(--royal))', minHeight: 44 }}
+                onClick={() => {
+                  sessionStorage.setItem('crewlist_auth_return', window.location.hash || '#/login')
+                  navigate('/forgot-password')
+                }}
+              >
+                Forgot password?
               </button>
-            </form>
+            </>
           ) : sent ? (
             <div className="space-y-3">
               <p className="text-sm" style={{ color: 'hsl(var(--slate))' }}>

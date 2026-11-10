@@ -19,6 +19,8 @@ import Join from '@/pages/Join'
 import AccountHome from '@/pages/AccountHome'
 import Onboard from '@/pages/Onboard'
 import AcceptInvite from '@/pages/AcceptInvite'
+import ForgotPassword from '@/pages/ForgotPassword'
+import ResetPassword from '@/pages/ResetPassword'
 import { getTenant, clearTenantCache } from '@/lib/api'
 import { setTeamName, setTenantSlug } from '@/lib/tenant'
 
@@ -34,16 +36,22 @@ export default function App() {
   const [tenantLoad, setTenantLoad] = useState<TenantLoad>({ state: 'loading' })
 
   useEffect(() => {
-    // Arriving via an emailed sign-in link: URL carries ?code=…, supabase-js
-    // exchanges it and fires SIGNED_IN — return to whatever needed the login.
+    // Emailed links carry ?code=… in the query. Recovery must reach its own
+    // form rather than being swallowed by the normal post-confirmation return.
     const fromEmailLink = new URLSearchParams(window.location.search).has('code')
+    const fromRecoveryLink = segments(window.location.hash)[0] === 'reset-password'
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
       setAuthReady(true)
     })
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s)
-      if (event === 'SIGNED_IN' && fromEmailLink) {
+      if (event === 'PASSWORD_RECOVERY') {
+        window.history.replaceState(null, '', window.location.pathname)
+        navigate('/reset-password')
+        return
+      }
+      if (event === 'SIGNED_IN' && fromEmailLink && !fromRecoveryLink) {
         window.history.replaceState(null, '', window.location.pathname)
         const back = sessionStorage.getItem('crewlist_auth_return')
         sessionStorage.removeItem('crewlist_auth_return')
@@ -81,6 +89,11 @@ export default function App() {
 
   const signOut = async () => { await supabase.auth.signOut() }
   const center = (node: React.ReactNode) => <div className="min-h-100dvh grid place-content-center">{node}</div>
+
+  // Password recovery lives outside tenant routing so it also works for
+  // console, invitation and onboarding return destinations.
+  if (seg[0] === 'forgot-password') return <ForgotPassword />
+  if (seg[0] === 'reset-password') return <ResetPassword session={session} authReady={authReady} />
 
   // ---- Crewlist console (super admin) ----
   if (seg[0] === 'console') {
