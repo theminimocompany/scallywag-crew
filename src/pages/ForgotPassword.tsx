@@ -48,7 +48,7 @@ export default function ForgotPassword() {
         <div className="panel p-6 space-y-5">
           <div>
             <h1 className="font-semibold" style={{ fontSize: 22 }}>Reset your password</h1>
-            <p className="text-sm mt-0.5 leading-relaxed" style={{ color: 'hsl(var(--slate))' }}>
+            <p className="text-sm mt-1 leading-relaxed" style={{ color: 'hsl(var(--slate))' }}>
               {sent ? 'Check your email for a secure reset link.' : 'Enter your account email and we’ll send you a reset link.'}
             </p>
           </div>
