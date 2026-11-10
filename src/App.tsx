@@ -36,19 +36,40 @@ export default function App() {
   const [tenantLoad, setTenantLoad] = useState<TenantLoad>({ state: 'loading' })
 
   useEffect(() => {
-    // Emailed links carry ?code=… in the query. Recovery must reach its own
-    // form rather than being swallowed by the normal post-confirmation return.
-    const fromEmailLink = new URLSearchParams(window.location.search).has('code')
+    // PKCE emails carry ?code=…. Implicit emails are marked with
+    // ?auth_callback=1 before Supabase consumes their #access_token=… fragment.
+    const params = new URLSearchParams(window.location.search)
+    const fromEmailLink = params.has('code') || params.get('auth_callback') === '1'
     const fromRecoveryLink = segments(window.location.hash)[0] === 'reset-password'
-      || new URLSearchParams(window.location.search).get('recovery') === '1'
+      || params.get('recovery') === '1'
+    let emailReturnHandled = false
+
+    const finishEmailReturn = () => {
+      if (emailReturnHandled || !fromEmailLink || fromRecoveryLink) return
+      emailReturnHandled = true
+      window.history.replaceState(null, '', window.location.pathname)
+      const back = sessionStorage.getItem('crewlist_auth_return')
+      sessionStorage.removeItem('crewlist_auth_return')
+      navigate(back || `/t/${TENANT_SLUG}/admin`)
+    }
+
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
       setAuthReady(true)
-      // The auth event can fire before this React subscription exists. The
-      // explicit recovery query makes the callback deterministic either way.
+      // Auth events can fire before this React subscription exists. Resolve
+      // emailed callbacks here as well so routing never depends on event timing.
       if (fromRecoveryLink) {
         window.history.replaceState(null, '', window.location.pathname)
         navigate('/reset-password')
+      } else if (fromEmailLink) {
+        if (data.session) {
+          finishEmailReturn()
+        } else {
+          // Expired or invalid callbacks must not leave a permanent spinner.
+          emailReturnHandled = true
+          window.history.replaceState(null, '', window.location.pathname)
+          navigate(sessionStorage.getItem('crewlist_auth_return') || '/login')
+        }
       }
     })
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
@@ -58,12 +79,7 @@ export default function App() {
         navigate('/reset-password')
         return
       }
-      if (event === 'SIGNED_IN' && fromEmailLink && !fromRecoveryLink) {
-        window.history.replaceState(null, '', window.location.pathname)
-        const back = sessionStorage.getItem('crewlist_auth_return')
-        sessionStorage.removeItem('crewlist_auth_return')
-        navigate(back || `/t/${TENANT_SLUG}/admin`)
-      }
+      if (event === 'SIGNED_IN') finishEmailReturn()
     })
     return () => sub.subscription.unsubscribe()
   }, [])
@@ -89,10 +105,14 @@ export default function App() {
     return () => { cancelled = true }
   }, [slug])
 
-  // default route → Scallywag public schedule (the owner's team)
+  // default route → Scallywag public schedule (the owner's team). Emailed
+  // callbacks must finish authentication before any tenant route is selected.
   useEffect(() => {
-    const recoveryCallback = new URLSearchParams(window.location.search).get('recovery') === '1'
-    if (seg.length === 0 && !recoveryCallback) navigate(`/t/${TENANT_SLUG}/schedule`)
+    const params = new URLSearchParams(window.location.search)
+    const authCallback = params.has('code')
+      || params.get('auth_callback') === '1'
+      || params.get('recovery') === '1'
+    if (seg.length === 0 && !authCallback) navigate(`/t/${TENANT_SLUG}/schedule`)
   }, [seg.length])
 
   const signOut = async () => { await supabase.auth.signOut() }
