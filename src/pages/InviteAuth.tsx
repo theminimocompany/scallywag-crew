@@ -123,6 +123,7 @@ export default function InviteAuth({ token }: { token: string }) {
               <p className="text-sm" style={{ color: 'hsl(var(--slate))' }}>
                 We sent a confirmation link to <span className="font-medium" style={{ color: 'hsl(var(--ink))' }}>{email}</span>.
                 Open it to return to this invitation automatically and accept your team access.
+                If you don’t see it, check your spam or junk folder.
               </p>
               <button className="btn-ghost w-full" onClick={() => setSent(false)}>
                 Back to account setup
