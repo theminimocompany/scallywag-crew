@@ -33,21 +33,28 @@ export default function AccountHome({ email }: { email: string }) {
         {!rows && !err && <Spinner />}
         {err && <ErrorBox message={err} onRetry={load} />}
         {rows && (
-          <div className="space-y-3">
-            {rows.map(m => m.tenants && (
-              <button key={m.tenant_id} className="panel p-4 w-full text-left cursor-pointer" onClick={() => navigate(`/t/${m.tenants!.slug}/admin`)}>
-                <div className="font-semibold">{m.tenants.name}</div>
-                <div className="text-xs mt-0.5" style={{ color: 'hsl(var(--slate))' }}>
-                  /t/{m.tenants.slug}{m.tenants.status === 'suspended' ? ' · suspended' : ''}
-                </div>
-              </button>
-            ))}
-            {rows.length === 0 && (
-              <p className="text-sm" style={{ color: 'hsl(var(--slate))' }}>
-                You're not an admin of any team yet. Start your own, or ask a team admin to invite you.
-              </p>
-            )}
-            <button className="btn-primary w-full" onClick={() => navigate('/join')}>Start a new team →</button>
+          <div>
+            <div className="space-y-3">
+              {rows.map(m => m.tenants && (
+                <button key={m.tenant_id} className="panel p-4 w-full text-left cursor-pointer" onClick={() => navigate(`/t/${m.tenants!.slug}/admin`)}>
+                  <div className="font-semibold">{m.tenants.name}</div>
+                  <div className="text-xs mt-0.5" style={{ color: 'hsl(var(--slate))' }}>
+                    /t/{m.tenants.slug}{m.tenants.status === 'suspended' ? ' · suspended' : ''}
+                  </div>
+                </button>
+              ))}
+              {rows.length === 0 && (
+                <p className="text-sm" style={{ color: 'hsl(var(--slate))' }}>
+                  You're not an admin of any team yet. Start your own, or ask a team admin to invite you.
+                </p>
+              )}
+            </div>
+            <div
+              className={rows.length > 0 ? 'mt-8 border-t pt-6' : 'mt-6'}
+              style={{ borderColor: 'hsl(var(--frost))' }}
+            >
+              <button className="btn-ghost w-full" onClick={() => navigate('/join')}>Start a new team →</button>
+            </div>
           </div>
         )}
       </main>
