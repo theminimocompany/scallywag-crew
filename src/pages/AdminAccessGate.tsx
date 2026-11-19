@@ -13,7 +13,7 @@ type AccessState =
 interface Props {
   tenantId: string
   userId: string
-  onSignOut: () => void
+  onSignOut: () => Promise<void>
   children: React.ReactNode
 }
 
@@ -64,7 +64,15 @@ export default function AdminAccessGate({ tenantId, userId, onSignOut, children 
               by Crewlist
             </span>
           </button>
-          <button className="chip cursor-pointer flex-none" onClick={onSignOut}>Sign out</button>
+          <button
+            className="chip cursor-pointer flex-none"
+            onClick={async () => {
+              await onSignOut()
+              navigate('/login')
+            }}
+          >
+            Sign out
+          </button>
         </div>
       </header>
       <main className="page flex-1 py-10 grid place-items-center w-full">
