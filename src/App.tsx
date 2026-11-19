@@ -13,6 +13,7 @@ import AdminRaceDetail from '@/pages/AdminRaceDetail'
 import AdminRoster from '@/pages/AdminRoster'
 import AdminImport from '@/pages/AdminImport'
 import AdminSettings from '@/pages/AdminSettings'
+import AdminAccessGate from '@/pages/AdminAccessGate'
 import ConsoleTeams from '@/pages/ConsoleTeams'
 import ConsoleTeamDetail from '@/pages/ConsoleTeamDetail'
 import Join from '@/pages/Join'
@@ -28,7 +29,7 @@ import { setTeamName, setTenantSlug } from '@/lib/tenant'
 type TenantLoad =
   | { state: 'loading' }
   | { state: 'notfound' }
-  | { state: 'ok'; status: string }
+  | { state: 'ok'; status: string; id: string }
 
 export default function App() {
   const hash = useHash()
@@ -142,7 +143,7 @@ export default function App() {
       .then(t => {
         if (cancelled) return
         setTeamName(t.name)
-        setTenantLoad({ state: 'ok', status: t.status ?? 'active' })
+        setTenantLoad({ state: 'ok', status: t.status ?? 'active', id: t.id })
       })
       .catch(() => { if (!cancelled) setTenantLoad({ state: 'notfound' }) })
     return () => { cancelled = true }
@@ -259,15 +260,17 @@ export default function App() {
     if (!session) return <AdminLogin />
     const sub = seg[3] ?? 'races'
     return (
-      <div className="min-h-100dvh flex flex-col">
-        <AdminHeader onSignOut={signOut} />
-        {sub === 'races' && seg[4] && <AdminRaceDetail raceId={seg[4]} />}
-        {sub === 'races' && !seg[4] && <AdminRaces />}
-        {sub === 'roster' && <AdminRoster crewId={seg[4]} />}
-        {sub === 'import' && <AdminImport />}
-        {sub === 'settings' && <AdminSettings />}
-        {!['races', 'roster', 'import', 'settings'].includes(sub) && <AdminRaces />}
-      </div>
+      <AdminAccessGate key={`${tenantLoad.id}:${session.user.id}`} tenantId={tenantLoad.id} userId={session.user.id} onSignOut={signOut}>
+        <div className="min-h-100dvh flex flex-col">
+          <AdminHeader onSignOut={signOut} />
+          {sub === 'races' && seg[4] && <AdminRaceDetail raceId={seg[4]} />}
+          {sub === 'races' && !seg[4] && <AdminRaces />}
+          {sub === 'roster' && <AdminRoster crewId={seg[4]} />}
+          {sub === 'import' && <AdminImport />}
+          {sub === 'settings' && <AdminSettings />}
+          {!['races', 'roster', 'import', 'settings'].includes(sub) && <AdminRaces />}
+        </div>
+      </AdminAccessGate>
     )
   }
 

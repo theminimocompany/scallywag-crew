@@ -87,6 +87,25 @@ export async function registerCrew(name: string): Promise<string> {
 }
 
 // ---------- admin ----------
+/** Verify membership before mounting any admin UI. RLS/RPC guards remain the
+ * security boundary; this check only prevents an unauthorised console render. */
+export async function checkAdminAccess(tenantId: string, userId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('tenant_members')
+    .select('tenant_id')
+    .eq('tenant_id', tenantId)
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (error) throw error
+  if (data) return true
+
+  // Preserve the owner's existing ability to open a team's admin area without
+  // adding a membership row. Ordinary removed admins get false here.
+  const { data: superAdmin, error: superError } = await supabase.rpc('is_super_admin')
+  if (superError) return false
+  return !!superAdmin
+}
+
 export async function fetchRaces(): Promise<Race[]> {
   const t = await getTenant()
   const { data, error } = await supabase
