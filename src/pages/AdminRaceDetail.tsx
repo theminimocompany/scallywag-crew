@@ -7,7 +7,7 @@ import {
 import { Spinner, ErrorBox, DateBlock } from '@/components/bits'
 import { FloatingBar } from '@/components/chrome'
 import { navigate } from '@/lib/hash'
-import { TENANT_SLUG } from '@/lib/config'
+import { currentTenantSlug } from '@/lib/tenant'
 
 type Row = Signup & { crew: Pick<Crew, 'id' | 'name' | 'is_approved'> }
 
@@ -75,7 +75,7 @@ export default function AdminRaceDetail({ raceId }: { raceId: string }) {
 
   return (
     <main className="page page-wide flex-1 py-5 pb-32 space-y-5 fade-in w-full mx-auto">
-      <button className="chip cursor-pointer" onClick={() => navigate(`/t/${TENANT_SLUG}/admin/races`)}>
+      <button className="chip cursor-pointer" onClick={() => navigate(`/t/${currentTenantSlug()}/admin/races`)}>
         ← All races
       </button>
 

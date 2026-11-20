@@ -5,7 +5,7 @@ import {
 } from '@/lib/api'
 import { Spinner, Empty, ErrorBox, DateBlock } from '@/components/bits'
 import { navigate } from '@/lib/hash'
-import { TENANT_SLUG } from '@/lib/config'
+import { currentTenantSlug } from '@/lib/tenant'
 
 export default function AdminRaces() {
   const [races, setRaces] = useState<Race[] | null>(null)
@@ -102,7 +102,7 @@ export default function AdminRaces() {
                   <DateBlock iso={r.race_date} />
                   <button
                     className="flex-1 min-w-0 text-left"
-                    onClick={() => navigate(`/t/${TENANT_SLUG}/admin/races/${r.id}`)}
+                    onClick={() => navigate(`/t/${currentTenantSlug()}/admin/races/${r.id}`)}
                   >
                     <span className={`font-medium leading-snug block ${past ? 'opacity-60' : ''}`}>{r.name}</span>
                     <span className="flex flex-wrap gap-1.5 mt-1.5">
