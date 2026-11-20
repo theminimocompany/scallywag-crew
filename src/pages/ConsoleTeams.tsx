@@ -78,7 +78,7 @@ export default function ConsoleTeams({ email, onSignOut }: { email: string; onSi
               ].map(([n, label]) => (
                 <div key={String(label)} className="panel p-4">
                   <div className="font-semibold" style={{ fontSize: 26 }}>{n}</div>
-                  <div className="text-xs mt-1" style={{ color: 'hsl(var(--slate))' }}>{label}</div>
+                  <div className="text-xs mt-0.5" style={{ color: 'hsl(var(--slate))' }}>{label}</div>
                 </div>
               ))}
             </div>
@@ -100,7 +100,7 @@ export default function ConsoleTeams({ email, onSignOut }: { email: string; onSi
                         <button className="font-semibold cursor-pointer text-left" style={{ color: 'hsl(var(--ink))' }} onClick={() => navigate(`/console/${t.id}`)}>
                           {t.name}
                         </button>
-                        <div className="text-xs mt-0.5" style={{ color: 'hsl(var(--slate))' }}>/t/{t.slug}</div>
+                        <div className="text-xs" style={{ color: 'hsl(var(--slate))' }}>/t/{t.slug}</div>
                       </td>
                       <td style={{ padding: '12px 14px' }}>{t.tenant_members[0]?.count ?? 0}</td>
                       <td style={{ padding: '12px 14px' }}>{counts.crew[t.id] ?? 0}</td>
