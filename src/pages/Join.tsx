@@ -41,6 +41,22 @@ export default function Join({ session }: { session: Session | null }) {
     return () => clearTimeout(t)
   }, [slug])
 
+  async function finishCreate(details: { name: string; slug: string }) {
+    if (creating.current) return
+    creating.current = true
+    setBusy(true)
+    try {
+      await createTeam(details.name, details.slug)
+      sessionStorage.removeItem(PENDING_KEY)
+      navigate(`/t/${details.slug}/onboard`)
+    } catch (e) {
+      const error = e as { code?: string; message?: string }
+      creating.current = false
+      setBusy(false)
+      setErr(error.code === '23505' ? 'That team link is taken — try another.' : (error.message ?? String(e)))
+    }
+  }
+
   // Once signed in (password sign-up, or returning from the emailed link),
   // finish creating the team from the stashed pending details.
   useEffect(() => {
@@ -48,18 +64,7 @@ export default function Join({ session }: { session: Session | null }) {
     let details = pending
     if (!details && name.trim() && validSlug) details = { name: name.trim(), slug }
     if (!details) return
-    creating.current = true
-    setBusy(true)
-    createTeam(details.name, details.slug)
-      .then(() => {
-        sessionStorage.removeItem(PENDING_KEY)
-        navigate(`/t/${details.slug}/onboard`)
-      })
-      .catch(e => {
-        creating.current = false
-        setBusy(false)
-        setErr(e?.code === '23505' ? 'That team link is taken — try another.' : (e?.message ?? String(e)))
-      })
+    queueMicrotask(() => { void finishCreate(details) })
   }, [session])
 
   async function submit(e: React.FormEvent) {
@@ -71,7 +76,10 @@ export default function Join({ session }: { session: Session | null }) {
     sessionStorage.setItem(PENDING_KEY, JSON.stringify({ name: name.trim(), slug }))
     sessionStorage.setItem('crewlist_auth_return', '#/join')
 
-    if (session) return // signed-in path handled by the effect above
+    if (session) {
+      await finishCreate({ name: name.trim(), slug })
+      return
+    }
 
     if (password.length < 8) return setErr('Use at least 8 characters for your password.')
 
