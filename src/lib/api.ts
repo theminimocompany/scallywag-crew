@@ -128,7 +128,7 @@ export async function fetchRaceSignups(raceId: string): Promise<(Signup & { crew
   const t = await getTenant()
   const { data, error } = await supabase
     .from('signups')
-    .select('id,tenant_id,crew_id,race_id,status,source,created_at,crew:crew_id(id,name,is_approved)')
+    .select('id,tenant_id,crew_id,race_id,status,source,created_at,crew:crew!signups_tenant_crew_fkey(id,name,is_approved)')
     .eq('tenant_id', t.id)
     .eq('race_id', raceId)
     .order('created_at')
@@ -168,7 +168,7 @@ export async function fetchCrewHistory(crewId: string): Promise<(Signup & { race
   const t = await getTenant()
   const { data, error } = await supabase
     .from('signups')
-    .select('id,tenant_id,crew_id,race_id,status,source,created_at,races:race_id(id,name,race_date)')
+    .select('id,tenant_id,crew_id,race_id,status,source,created_at,races:races!signups_tenant_race_fkey(id,name,race_date)')
     .eq('tenant_id', t.id)
     .eq('crew_id', crewId)
   if (error) throw error
