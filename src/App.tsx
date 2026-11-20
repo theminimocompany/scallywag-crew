@@ -214,7 +214,7 @@ export default function App() {
       <main className="page py-16">
         <div className="panel p-8 text-center space-y-2">
           <p className="font-semibold" style={{ fontSize: 20 }}>No team at this address</p>
-          <p className="text-sm" style={{ color: 'hsl(var(--slate))' }}>
+          <p className="text-sm mt-2" style={{ color: 'hsl(var(--slate))' }}>
             Check the link you were sent, or start your own team on Crewlist.
           </p>
           <button className="btn-primary mt-2" onClick={() => navigate('/join')}>Go to Crewlist</button>
@@ -230,7 +230,7 @@ export default function App() {
       <main className="page py-16">
         <div className="panel p-8 text-center space-y-2">
           <p className="font-semibold" style={{ fontSize: 20 }}>This team is currently unavailable</p>
-          <p className="text-sm" style={{ color: 'hsl(var(--slate))' }}>
+          <p className="text-sm mt-2" style={{ color: 'hsl(var(--slate))' }}>
             Its races, crew and sign-ups are safe. If you admin this team, contact Crewlist to reactivate it.
           </p>
         </div>
@@ -251,7 +251,11 @@ export default function App() {
       sessionStorage.setItem('crewlist_auth_return', window.location.hash)
       return <AdminLogin crewlist />
     }
-    return <Onboard email={session.user.email ?? ''} />
+    return (
+      <AdminAccessGate key={`${tenantLoad.id}:${session.user.id}`} tenantId={tenantLoad.id} userId={session.user.id} onSignOut={signOut}>
+        <Onboard email={session.user.email ?? ''} />
+      </AdminAccessGate>
+    )
   }
 
   // ---- admin ----
