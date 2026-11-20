@@ -56,7 +56,7 @@ export default function App() {
       window.history.replaceState(null, '', window.location.pathname)
       const back = inviteReturn || sessionStorage.getItem('crewlist_auth_return')
       sessionStorage.removeItem('crewlist_auth_return')
-      navigate(back || `/t/${TENANT_SLUG}/admin`)
+      navigate(back || '/login')
     }
 
     const failEmailReturn = () => {
