@@ -13,6 +13,7 @@ export interface DirectoryEntry { tenant_slug: string; crew_id: string; name: st
 export interface ScheduleRow {
   tenant_slug: string; race_id: string; race_name: string
   race_date: string; selected_crew: string[]; signup_closed?: boolean
+  start_time?: string | null; location?: string | null
 }
 export interface Crew {
   id: string; tenant_id: string; airtable_id: string | null
@@ -21,7 +22,11 @@ export interface Crew {
   emergency_contact_phone: string | null; notes: string | null
   is_approved: boolean; created_at: string
 }
-export interface Race { id: string; tenant_id: string; name: string; race_date: string; is_hidden?: boolean; signup_closed?: boolean }
+export interface Race {
+  id: string; tenant_id: string; name: string; race_date: string
+  start_time?: string | null; location?: string | null
+  is_hidden?: boolean; signup_closed?: boolean
+}
 export type SignupStatus = 'available' | 'selected'
 export interface Signup {
   id: string; tenant_id: string; crew_id: string; race_id: string
@@ -200,10 +205,44 @@ export async function deleteCrew(crewId: string): Promise<void> {
   if (error) throw error
 }
 
-export async function addRace(name: string, raceDate: string): Promise<void> {
+export interface RaceDetailsInput {
+  name: string
+  raceDate: string
+  startTime?: string
+  location?: string
+}
+
+export async function addRace(
+  name: string,
+  raceDate: string,
+  details: { startTime?: string; location?: string } = {},
+): Promise<void> {
   const t = await getTenant()
-  const { error } = await supabase.from('races').insert({ tenant_id: t.id, name, race_date: raceDate })
+  const { error } = await supabase.from('races').insert({
+    tenant_id: t.id,
+    name,
+    race_date: raceDate,
+    start_time: details.startTime?.trim() || null,
+    location: details.location?.trim() || null,
+  })
   if (error) throw error
+}
+
+export async function updateRaceDetails(raceId: string, fields: RaceDetailsInput): Promise<void> {
+  const t = await getTenant()
+  const { data, error } = await supabase
+    .from('races')
+    .update({
+      name: fields.name.trim(),
+      race_date: fields.raceDate,
+      start_time: fields.startTime?.trim() || null,
+      location: fields.location?.trim() || null,
+    })
+    .eq('id', raceId)
+    .eq('tenant_id', t.id)
+    .select('id')
+  if (error) throw error
+  if (data.length !== 1) throw new Error('Race details were not saved. The race may belong to another team or no longer exist.')
 }
 
 export async function deleteRace(raceId: string): Promise<void> {
@@ -318,7 +357,7 @@ export async function createTeam(name: string, slug: string): Promise<void> {
   if (error) throw error
 }
 
-export async function addRacesBulk(rows: { name: string; race_date: string }[]): Promise<void> {
+export async function addRacesBulk(rows: { name: string; race_date: string; start_time?: string | null; location?: string | null }[]): Promise<void> {
   if (!rows.length) return
   const t = await getTenant()
   const { error } = await supabase.from('races').insert(rows.map(r => ({ ...r, tenant_id: t.id })))
@@ -335,7 +374,28 @@ export async function addCrewBulk(names: string[]): Promise<void> {
 // ---------- RHKYC calendar CSV ----------
 // Columns (Google Calendar export): Subject, Start Date (DD/MM/YYYY),
 // Start Time, End Date, End Time, All Day Event, Description, Location, Private
-export interface CsvRace { name: string; date: string; location: string; duplicate: boolean; include: boolean }
+export interface CsvRace {
+  name: string; date: string; startTime: string; location: string
+  duplicate: boolean; include: boolean
+}
+
+function parseCsvTime(value: string, raceName: string): string {
+  const v = value.trim()
+  if (!v) return ''
+  const m = v.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])?$/)
+  if (!m) throw new Error(`Invalid Start Time "${v}" for "${raceName}" — use HH:MM or HH:MM AM/PM.`)
+  let hour = Number(m[1])
+  const minute = Number(m[2])
+  const meridiem = m[3]?.toLowerCase()
+  if (minute > 59 || (meridiem ? hour < 1 || hour > 12 : hour > 23)) {
+    throw new Error(`Invalid Start Time "${v}" for "${raceName}" — use a real time such as 13:30.`)
+  }
+  if (meridiem) {
+    if (hour === 12) hour = 0
+    if (meridiem === 'pm') hour += 12
+  }
+  return `${String(hour).padStart(2, '0')}:${m[2]}`
+}
 
 export function parseRhkycCsv(text: string, existing: Race[]): CsvRace[] {
   const rows = csvParse(text)
@@ -343,6 +403,7 @@ export function parseRhkycCsv(text: string, existing: Race[]): CsvRace[] {
   const head = rows[0].map(h => h.trim().toLowerCase())
   const iSub = head.indexOf('subject')
   const iDate = head.indexOf('start date')
+  const iTime = head.indexOf('start time')
   const iLoc = head.indexOf('location')
   if (iSub < 0 || iDate < 0) throw new Error('Missing "Subject" / "Start Date" columns — is this the RHKYC calendar export?')
   const key = (n: string, d: string) => `${d}|${n.trim().toLowerCase()}`
@@ -357,7 +418,10 @@ export function parseRhkycCsv(text: string, existing: Race[]): CsvRace[] {
     const date = `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`
     const isDuty = /race management/i.test(name)
     out.push({
-      name, date, location: (r[iLoc] || '').trim(),
+      name,
+      date,
+      startTime: parseCsvTime(iTime >= 0 ? (r[iTime] || '') : '', name),
+      location: iLoc >= 0 ? (r[iLoc] || '').trim() : '',
       duplicate: have.has(key(name, date)),
       include: !isDuty && !have.has(key(name, date)),
     })
@@ -387,6 +451,10 @@ function csvParse(text: string): string[][] {
 }
 
 // ---------- formatting ----------
+export function fmtTime(value?: string | null): string {
+  return value ? value.slice(0, 5) : ''
+}
+
 export function fmtDate(iso: string): { day: string; dow: string; mon: string } {
   const d = new Date(iso + 'T00:00:00')
   return {

@@ -1,4 +1,4 @@
-import { fmtDate } from '@/lib/api'
+import { fmtDate, fmtTime } from '@/lib/api'
 
 export function Spinner({ label = 'Loading…' }: { label?: string }) {
   return (
@@ -37,6 +37,19 @@ export function ErrorBox({ message, onRetry }: { message: string; onRetry?: () =
       <p className="text-sm mt-1 break-words" style={{ color: 'hsl(var(--slate))' }}>{message}</p>
       {onRetry && <button className="btn-ghost mt-4" onClick={onRetry}>Try again</button>}
     </div>
+  )
+}
+
+/** Optional race start time and location, shared by admin and sailor views. */
+export function RaceMeta({ startTime, location }: { startTime?: string | null; location?: string | null }) {
+  const time = fmtTime(startTime)
+  if (!time && !location?.trim()) return null
+  return (
+    <p className="text-sm mt-1 break-words" style={{ color: 'hsl(var(--slate))' }}>
+      {time && <span className="mono">{time}</span>}
+      {time && location?.trim() && <span aria-hidden> · </span>}
+      {location?.trim()}
+    </p>
   )
 }
 
