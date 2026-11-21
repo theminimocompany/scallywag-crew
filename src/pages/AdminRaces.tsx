@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  fetchRaces, fetchAllSignups, addRace, deleteRace,
+  fetchRaces, fetchAllSignups, addRace,
   groupByMonth, type Race, type Signup,
 } from '@/lib/api'
-import { Spinner, Empty, ErrorBox, DateBlock, RaceMeta } from '@/components/bits'
+import { Spinner, Empty, ErrorBox, DateBlock, RaceMeta, TimeInput } from '@/components/bits'
 import { navigate } from '@/lib/hash'
 import { currentTenantSlug } from '@/lib/tenant'
 
@@ -54,11 +54,6 @@ export default function AdminRaces() {
     } catch (e2) { setErr((e2 as Error).message) } finally { setBusy(false) }
   }
 
-  async function remove(r: Race) {
-    if (!window.confirm(`Delete "${r.name}" (${r.race_date})?\nAll signups for this race will be removed.`)) return
-    try { await deleteRace(r.id); load() } catch (e) { setErr((e as Error).message) }
-  }
-
   return (
     <main className="page page-wide flex-1 py-5 space-y-5 fade-in w-full mx-auto">
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -91,7 +86,7 @@ export default function AdminRaces() {
             </label>
             <label className="space-y-1">
               <span className="text-xs font-medium">Start time <span style={{ color: 'hsl(var(--slate))' }}>(optional)</span></span>
-              <input className="input" type="time" value={startTime} onChange={e => setStartTime(e.target.value)} aria-label="Race start time, optional" />
+              <TimeInput value={startTime} onChange={setStartTime} disabled={busy} ariaLabel="Race start time, optional, 24-hour HH:MM" />
             </label>
             <label className="space-y-1 sm:col-span-2">
               <span className="text-xs font-medium">Location <span style={{ color: 'hsl(var(--slate))' }}>(optional)</span></span>
@@ -132,14 +127,6 @@ export default function AdminRaces() {
                         <span className="dot" aria-hidden />{c.s} selected
                       </span>
                     </span>
-                  </button>
-                  <button
-                    className="chip cursor-pointer opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
-                    style={{ minHeight: 26, fontSize: 12, color: 'hsl(var(--destructive))' }}
-                    onClick={() => remove(r)}
-                    aria-label={`Delete ${r.name}`}
-                  >
-                    Delete
                   </button>
                 </div>
               )

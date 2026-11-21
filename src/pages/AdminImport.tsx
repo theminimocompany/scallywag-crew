@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { fetchRaces, parseRhkycCsv, addRace, type CsvRace, type Race } from '@/lib/api'
-import { Spinner, ErrorBox } from '@/components/bits'
+import { Spinner, ErrorBox, TimeInput } from '@/components/bits'
 
 export default function AdminImport() {
   const [existing, setExisting] = useState<Race[] | null>(null)
@@ -91,10 +91,10 @@ export default function AdminImport() {
                   <div className="grid gap-2 sm:grid-cols-[10rem_1fr] pl-0 sm:pl-8">
                     <label className="space-y-1">
                       <span className="text-xs font-medium">Start time <span style={{ color: 'hsl(var(--slate))' }}>(optional)</span></span>
-                      <input
-                        className="input" type="time" value={r.startTime} disabled={busy}
-                        aria-label={`Start time for ${r.name}, optional`}
-                        onChange={e => setRows(rs => rs!.map((x, j) => j === i ? { ...x, startTime: e.target.value } : x))}
+                      <TimeInput
+                        value={r.startTime} disabled={busy}
+                        ariaLabel={`Start time for ${r.name}, optional, 24-hour HH:MM`}
+                        onChange={startTime => setRows(rs => rs!.map((x, j) => j === i ? { ...x, startTime } : x))}
                       />
                     </label>
                     <label className="space-y-1">

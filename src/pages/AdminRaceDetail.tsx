@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   fetchRaces, fetchRaceSignups, fetchCrewAll,
-  setSignupStatus, removeSignup, addToSelected, updateRaceDetails,
+  setSignupStatus, removeSignup, addToSelected, updateRaceDetails, deleteRace,
   type Race, type Signup, type Crew,
 } from '@/lib/api'
-import { Spinner, ErrorBox, DateBlock, RaceMeta, ErrText } from '@/components/bits'
+import { Spinner, ErrorBox, DateBlock, RaceMeta, ErrText, TimeInput } from '@/components/bits'
 import { FloatingBar } from '@/components/chrome'
 import { navigate } from '@/lib/hash'
 import { currentTenantSlug } from '@/lib/tenant'
@@ -90,6 +90,25 @@ export default function AdminRaceDetail({ raceId }: { raceId: string }) {
     }
   }
 
+  async function removeRace() {
+    if (!race || !rows) return
+    const signupCount = rows.length
+    const confirmed = window.confirm(
+      `Delete "${race.name}" (${race.race_date})?\n` +
+      `This cannot be undone. Deleting this race also removes its ${signupCount} sign-up${signupCount === 1 ? '' : 's'}.`,
+    )
+    if (!confirmed) return
+    setEditBusy(true)
+    setEditErr(null)
+    try {
+      await deleteRace(raceId)
+      navigate(`/t/${currentTenantSlug()}/admin/races`)
+    } catch (e) {
+      setEditErr((e as Error).message)
+      setEditBusy(false)
+    }
+  }
+
   function copyWhatsApp() {
     if (!race || !rows) return
     const when = new Date(race.race_date + 'T00:00:00')
@@ -150,7 +169,7 @@ export default function AdminRaceDetail({ raceId }: { raceId: string }) {
             </label>
             <label className="space-y-1">
               <span className="text-xs font-medium">Start time <span style={{ color: 'hsl(var(--slate))' }}>(optional)</span></span>
-              <input className="input" type="time" value={editTime} onChange={e => setEditTime(e.target.value)} />
+              <TimeInput value={editTime} onChange={setEditTime} disabled={editBusy} ariaLabel="Race start time, optional, 24-hour HH:MM" />
             </label>
             <label className="space-y-1 sm:col-span-2">
               <span className="text-xs font-medium">Location <span style={{ color: 'hsl(var(--slate))' }}>(optional)</span></span>
@@ -161,6 +180,15 @@ export default function AdminRaceDetail({ raceId }: { raceId: string }) {
           <div className="flex gap-2 flex-wrap">
             <button className="btn-primary" type="submit" disabled={editBusy}>{editBusy ? 'Saving…' : 'Save changes'}</button>
             <button className="btn-ghost" type="button" disabled={editBusy} onClick={() => setEditing(false)}>Cancel</button>
+            <button
+              className="btn-ghost w-full sm:w-auto sm:ml-auto"
+              style={{ color: 'hsl(var(--destructive))', borderColor: 'hsl(var(--destructive) / 0.45)' }}
+              type="button"
+              disabled={editBusy}
+              onClick={removeRace}
+            >
+              Delete race
+            </button>
           </div>
         </form>
       )}
