@@ -205,6 +205,23 @@ export async function deleteCrew(crewId: string): Promise<void> {
   if (error) throw error
 }
 
+export function normalizeTimeInput(value?: string | null): string {
+  const v = value?.trim() ?? ''
+  const m = v.match(/^(\d{1,2}):(\d{2})$/)
+  return m ? `${m[1].padStart(2, '0')}:${m[2]}` : v
+}
+
+export function isValidTimeInput(value?: string | null): boolean {
+  const v = normalizeTimeInput(value)
+  return !v || /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(v)
+}
+
+function raceTimeForSave(value?: string | null): string | null {
+  const v = normalizeTimeInput(value)
+  if (!isValidTimeInput(v)) throw new Error('Start time must use 24-hour HH:MM, for example 13:45.')
+  return v || null
+}
+
 export interface RaceDetailsInput {
   name: string
   raceDate: string
@@ -222,7 +239,7 @@ export async function addRace(
     tenant_id: t.id,
     name,
     race_date: raceDate,
-    start_time: details.startTime?.trim() || null,
+    start_time: raceTimeForSave(details.startTime),
     location: details.location?.trim() || null,
   })
   if (error) throw error
@@ -235,7 +252,7 @@ export async function updateRaceDetails(raceId: string, fields: RaceDetailsInput
     .update({
       name: fields.name.trim(),
       race_date: fields.raceDate,
-      start_time: fields.startTime?.trim() || null,
+      start_time: raceTimeForSave(fields.startTime),
       location: fields.location?.trim() || null,
     })
     .eq('id', raceId)

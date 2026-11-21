@@ -1,4 +1,4 @@
-import { fmtDate, fmtTime } from '@/lib/api'
+import { fmtDate, fmtTime, normalizeTimeInput } from '@/lib/api'
 
 export function Spinner({ label = 'Loading…' }: { label?: string }) {
   return (
@@ -50,6 +50,39 @@ export function RaceMeta({ startTime, location }: { startTime?: string | null; l
       {time && location?.trim() && <span aria-hidden> · </span>}
       {location?.trim()}
     </p>
+  )
+}
+
+/** Locale-independent 24-hour time input; empty remains a valid optional value. */
+export function TimeInput({
+  value,
+  onChange,
+  disabled = false,
+  ariaLabel = 'Start time, optional, 24-hour HH:MM',
+}: {
+  value: string
+  onChange: (value: string) => void
+  disabled?: boolean
+  ariaLabel?: string
+}) {
+  return (
+    <input
+      className="input mono"
+      type="text"
+      inputMode="numeric"
+      autoComplete="off"
+      autoCapitalize="off"
+      spellCheck={false}
+      placeholder="13:45"
+      maxLength={5}
+      pattern="(?:[01]\d|2[0-3]):[0-5]\d"
+      title="Use 24-hour time in HH:MM format, for example 13:45."
+      aria-label={ariaLabel}
+      value={value}
+      disabled={disabled}
+      onChange={e => onChange(normalizeTimeInput(e.target.value))}
+      onBlur={() => onChange(normalizeTimeInput(value))}
+    />
   )
 }
 
