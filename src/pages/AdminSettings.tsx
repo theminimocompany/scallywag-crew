@@ -7,7 +7,7 @@ import {
 import { supabase } from '@/lib/supabase'
 import { setTeamName } from '@/lib/tenant'
 import { navigate } from '@/lib/hash'
-import { Spinner, ErrText } from '@/components/bits'
+import { Spinner, ErrText, RaceMeta } from '@/components/bits'
 
 export default function AdminSettings() {
   const [tenant, setTenant] = useState<Tenant | null>(null)
@@ -208,6 +208,7 @@ export default function AdminSettings() {
                   <div className="text-xs" style={{ color: 'hsl(var(--slate))' }}>
                     {d.dow} {d.day} · {d.mon}
                   </div>
+                  <RaceMeta startTime={r.start_time} location={r.location} />
                 </div>
                 <div className="flex flex-col items-end gap-1.5 flex-none">
                   <button

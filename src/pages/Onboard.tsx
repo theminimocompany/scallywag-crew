@@ -127,13 +127,25 @@ export default function Onboard({ email }: { email: string }) {
                   {csvRaces.slice(0, 3).map(r => (
                     <div key={r.name + r.date} className="flex gap-4 p-3 text-sm">
                       <span className="mono flex-none">{r.date}</span>
-                      <span>{r.name}{r.duplicate ? ' · already added' : ''}</span>
+                      <div className="min-w-0">
+                        <span>{r.name}{r.duplicate ? ' · already added' : ''}</span>
+                        {(r.startTime || r.location) && (
+                          <span className="block text-xs mt-0.5" style={{ color: 'hsl(var(--slate))' }}>
+                            {[r.startTime, r.location].filter(Boolean).join(' · ')}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
                 <button className="btn-primary w-full" disabled={busy || racesToImport.length === 0}
                   onClick={() => run(async () => {
-                    await addRacesBulk(racesToImport.map(r => ({ name: r.name, race_date: r.date })))
+                    await addRacesBulk(racesToImport.map(r => ({
+                      name: r.name,
+                      race_date: r.date,
+                      start_time: r.startTime || null,
+                      location: r.location.trim() || null,
+                    })))
                     setImported(v => ({ ...v, races: racesToImport.length }))
                   }, 3)}>
                   Import {racesToImport.length} races →

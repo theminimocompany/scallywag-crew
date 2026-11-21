@@ -31,7 +31,7 @@ const tenant = tenants[0]
 console.log(`Tenant: ${tenant.name} (${tenant.id})`)
 
 const [races, crew, allSignups] = await Promise.all([
-  sb(`races?tenant_id=eq.${tenant.id}&order=race_date&select=id,name,race_date,is_hidden,signup_closed`),
+  sb(`races?tenant_id=eq.${tenant.id}&order=race_date,start_time.nullslast&select=id,name,race_date,start_time,location,is_hidden,signup_closed`),
   sb(`crew?tenant_id=eq.${tenant.id}&order=name&select=id,name,phone,emergency_contact_name,emergency_contact_phone,notes,is_approved`),
   sb(`signups?select=race_id,status,crew(name),races(name,race_date)`),
 ])
@@ -48,13 +48,15 @@ const fmtDate = iso => {
 const names = rows => rows.map(s => s.crew?.name).filter(Boolean).sort().join('\n')
 
 const racesRows = [
-  ['Race Date', 'Race Name', 'Available #', 'Selected #', 'Available Crew', 'Selected Crew', 'Sign-ups', 'Visible'],
+  ['Race Date', 'Start Time', 'Location', 'Race Name', 'Available #', 'Selected #', 'Available Crew', 'Selected Crew', 'Sign-ups', 'Visible'],
   ...races.map(r => {
     const su = signups.filter(s => s.race_id === r.id)
     const avail = su.filter(s => s.status === 'available')
     const sel = su.filter(s => s.status === 'selected')
     return [
       fmtDate(r.race_date),
+      r.start_time ?? '',
+      r.location ?? '',
       r.name,
       avail.length,
       sel.length,
