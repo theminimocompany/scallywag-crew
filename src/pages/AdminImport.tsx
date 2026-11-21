@@ -34,7 +34,7 @@ export default function AdminImport() {
     setErr(null)
     try {
       for (const r of chosen) {
-        await addRace(r.name, r.date)   // sequential: keeps failures attributable
+        await addRace(r.name, r.date, { startTime: r.startTime, location: r.location })   // sequential: keeps failures attributable
       }
       setDone(chosen.length)
       setRows(null)
@@ -47,8 +47,8 @@ export default function AdminImport() {
       <div>
         <h1 className="font-semibold" style={{ fontSize: 22 }}>Import race calendar</h1>
         <p className="text-sm mt-0.5" style={{ color: 'hsl(var(--slate))' }}>
-          Upload the RHKYC calendar CSV (Google Calendar export: Subject, Start Date DD/MM/YYYY, Location…).
-          Race-management duty rows and races you already have are left out automatically.
+          Upload the RHKYC calendar CSV (Google Calendar export: Subject, Start Date DD/MM/YYYY, Start Time, Location…).
+          Race-management duty rows and races you already have are left out automatically. Start time and location are optional.
         </p>
       </div>
 
@@ -74,17 +74,40 @@ export default function AdminImport() {
             {rows.filter(r => /race management/i.test(r.name)).length} duty rows skipped.
             Untick anything you don't want.
           </p>
-          <div className="panel divide-y divide-[hsl(var(--frost))] max-h-96 overflow-y-auto">
+          <div className="panel divide-y divide-[hsl(var(--frost))] max-h-[32rem] overflow-y-auto">
             {rows.map((r, i) => (
-              <label key={i} className="checkrow" style={r.duplicate ? { opacity: 0.45 } : {}}>
-                <input
-                  type="checkbox" className="check" checked={r.include}
-                  onChange={() => setRows(rs => rs!.map((x, j) => j === i ? { ...x, include: !x.include } : x))}
-                />
-                <span className="mono text-sm flex-none" style={{ width: 86, color: 'hsl(var(--slate))' }}>{r.date}</span>
-                <span className="flex-1 min-w-0 truncate font-medium">{r.name}</span>
-                {r.duplicate && <span className="chip flex-none" style={{ minHeight: 24, fontSize: 11.5 }}>have it</span>}
-              </label>
+              <div key={i} className="p-3 space-y-3" style={r.duplicate ? { opacity: 0.45 } : {}}>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox" className="check flex-none" checked={r.include} disabled={busy}
+                    aria-label={`Include ${r.name}`}
+                    onChange={() => setRows(rs => rs!.map((x, j) => j === i ? { ...x, include: !x.include } : x))}
+                  />
+                  <span className="mono text-sm flex-none" style={{ width: 86, color: 'hsl(var(--slate))' }}>{r.date}</span>
+                  <span className="flex-1 min-w-0 font-medium break-words">{r.name}</span>
+                  {r.duplicate && <span className="chip flex-none" style={{ minHeight: 24, fontSize: 11.5 }}>have it</span>}
+                </div>
+                {r.include && (
+                  <div className="grid gap-2 sm:grid-cols-[10rem_1fr] pl-0 sm:pl-8">
+                    <label className="space-y-1">
+                      <span className="text-xs font-medium">Start time <span style={{ color: 'hsl(var(--slate))' }}>(optional)</span></span>
+                      <input
+                        className="input" type="time" value={r.startTime} disabled={busy}
+                        aria-label={`Start time for ${r.name}, optional`}
+                        onChange={e => setRows(rs => rs!.map((x, j) => j === i ? { ...x, startTime: e.target.value } : x))}
+                      />
+                    </label>
+                    <label className="space-y-1">
+                      <span className="text-xs font-medium">Location <span style={{ color: 'hsl(var(--slate))' }}>(optional)</span></span>
+                      <input
+                        className="input" value={r.location} disabled={busy} placeholder="e.g. Victoria Harbour"
+                        aria-label={`Location for ${r.name}, optional`}
+                        onChange={e => setRows(rs => rs!.map((x, j) => j === i ? { ...x, location: e.target.value } : x))}
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
             ))}
           </div>
           <button className="btn-primary w-full" disabled={busy || chosen.length === 0} onClick={runImport}>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { fetchSchedule, groupByMonth, type ScheduleRow } from '@/lib/api'
 import { PublicHeader, PublicTabs } from '@/components/chrome'
-import { Spinner, Empty, ErrorBox, DateBlock } from '@/components/bits'
+import { Spinner, Empty, ErrorBox, DateBlock, RaceMeta } from '@/components/bits'
 
 export default function PublicSchedule() {
   const [rows, setRows] = useState<ScheduleRow[] | null>(null)
@@ -42,6 +42,7 @@ export default function PublicSchedule() {
                   <DateBlock iso={r.race_date} />
                   <div className="min-w-0 flex-1">
                     <h3 className="font-medium leading-snug">{r.race_name}</h3>
+                    <RaceMeta startTime={r.start_time} location={r.location} />
                     {r.selected_crew.length > 0 ? (
                       <div className="flex flex-wrap gap-1.5 mt-2">
                         {r.selected_crew.map(n => (

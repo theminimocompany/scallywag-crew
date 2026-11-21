@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   fetchRaces, fetchRaceSignups, fetchCrewAll,
-  setSignupStatus, removeSignup, addToSelected,
+  setSignupStatus, removeSignup, addToSelected, updateRaceDetails,
   type Race, type Signup, type Crew,
 } from '@/lib/api'
-import { Spinner, ErrorBox, DateBlock } from '@/components/bits'
+import { Spinner, ErrorBox, DateBlock, RaceMeta, ErrText } from '@/components/bits'
 import { FloatingBar } from '@/components/chrome'
 import { navigate } from '@/lib/hash'
 import { currentTenantSlug } from '@/lib/tenant'
@@ -19,6 +19,13 @@ export default function AdminRaceDetail({ raceId }: { raceId: string }) {
   const [query, setQuery] = useState('')
   const [copied, setCopied] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [editing, setEditing] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editDate, setEditDate] = useState('')
+  const [editTime, setEditTime] = useState('')
+  const [editLocation, setEditLocation] = useState('')
+  const [editBusy, setEditBusy] = useState(false)
+  const [editErr, setEditErr] = useState<string | null>(null)
 
   const load = () => {
     setErr(null)
@@ -52,14 +59,47 @@ export default function AdminRaceDetail({ raceId }: { raceId: string }) {
     finally { setBusyId(null) }
   }
 
+  function beginEdit() {
+    if (!race) return
+    setEditName(race.name)
+    setEditDate(race.race_date)
+    setEditTime(race.start_time?.slice(0, 5) ?? '')
+    setEditLocation(race.location ?? '')
+    setEditErr(null)
+    setEditing(true)
+  }
+
+  async function saveDetails(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editName.trim() || !editDate) return
+    setEditBusy(true)
+    setEditErr(null)
+    try {
+      await updateRaceDetails(raceId, {
+        name: editName,
+        raceDate: editDate,
+        startTime: editTime,
+        location: editLocation,
+      })
+      setEditing(false)
+      await load()
+    } catch (e2) {
+      setEditErr((e2 as Error).message)
+    } finally {
+      setEditBusy(false)
+    }
+  }
+
   function copyWhatsApp() {
     if (!race || !rows) return
     const when = new Date(race.race_date + 'T00:00:00')
       .toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
     const names = selected.map(r => r.crew.name).sort()
+    const time = race.start_time?.slice(0, 5)
     const text = [
       `*${race.name}*`,
-      when,
+      `${when}${time ? ` · ${time}` : ''}`,
+      ...(race.location?.trim() ? [race.location.trim()] : []),
       '',
       names.length > 0 ? `Crew (${names.length}):` : 'No crew selected yet.',
       ...names.map((n, i) => `${i + 1}. ${n}`),
@@ -79,15 +119,51 @@ export default function AdminRaceDetail({ raceId }: { raceId: string }) {
         ← All races
       </button>
 
-      <div className="flex gap-3 items-start">
-        <DateBlock iso={race.race_date} />
-        <div>
-          <h1 className="font-semibold leading-snug" style={{ fontSize: 20 }}>{race.name}</h1>
-          <p className="text-sm mt-0.5" style={{ color: 'hsl(var(--slate))' }}>
-            {available.length} available · {selected.length} selected
-          </p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="flex gap-3 items-start min-w-0">
+          <DateBlock iso={race.race_date} />
+          <div className="min-w-0">
+            <h1 className="font-semibold leading-snug break-words" style={{ fontSize: 20 }}>{race.name}</h1>
+            <RaceMeta startTime={race.start_time} location={race.location} />
+            <p className="text-sm mt-0.5" style={{ color: 'hsl(var(--slate))' }}>
+              {available.length} available · {selected.length} selected
+            </p>
+          </div>
         </div>
+        <button className="btn-ghost" onClick={beginEdit}>Edit race details</button>
       </div>
+
+      {editing && (
+        <form className="panel p-4 space-y-4 fade-in" onSubmit={saveDetails}>
+          <div>
+            <h2 className="font-semibold">Edit race details</h2>
+            <p className="text-sm mt-0.5" style={{ color: 'hsl(var(--slate))' }}>Start time and location are optional.</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="space-y-1 sm:col-span-2">
+              <span className="text-xs font-medium">Race name</span>
+              <input className="input" value={editName} onChange={e => setEditName(e.target.value)} required />
+            </label>
+            <label className="space-y-1">
+              <span className="text-xs font-medium">Race date</span>
+              <input className="input" type="date" value={editDate} onChange={e => setEditDate(e.target.value)} required />
+            </label>
+            <label className="space-y-1">
+              <span className="text-xs font-medium">Start time <span style={{ color: 'hsl(var(--slate))' }}>(optional)</span></span>
+              <input className="input" type="time" value={editTime} onChange={e => setEditTime(e.target.value)} />
+            </label>
+            <label className="space-y-1 sm:col-span-2">
+              <span className="text-xs font-medium">Location <span style={{ color: 'hsl(var(--slate))' }}>(optional)</span></span>
+              <input className="input" placeholder="e.g. Victoria Harbour" value={editLocation} onChange={e => setEditLocation(e.target.value)} />
+            </label>
+          </div>
+          {editErr && <ErrText>{editErr}</ErrText>}
+          <div className="flex gap-2 flex-wrap">
+            <button className="btn-primary" type="submit" disabled={editBusy}>{editBusy ? 'Saving…' : 'Save changes'}</button>
+            <button className="btn-ghost" type="button" disabled={editBusy} onClick={() => setEditing(false)}>Cancel</button>
+          </div>
+        </form>
+      )}
 
       {/* Add anyone directly */}
       <section className="space-y-2">
@@ -179,16 +255,18 @@ export default function AdminRaceDetail({ raceId }: { raceId: string }) {
         </section>
       </div>
 
-      {/* WhatsApp copy bar */}
-      <FloatingBar wide>
-        <button
-          className="btn-primary w-full"
-          style={{ boxShadow: '0 10px 24px hsl(var(--royal) / 0.35)' }}
-          onClick={copyWhatsApp}
-        >
-          {copied ? 'Copied ✓' : `Copy crew list for WhatsApp (${selected.length})`}
-        </button>
-      </FloatingBar>
+      {/* WhatsApp copy bar — hidden while editing so it cannot cover Save/Cancel. */}
+      {!editing && (
+        <FloatingBar wide>
+          <button
+            className="btn-primary w-full"
+            style={{ boxShadow: '0 10px 24px hsl(var(--royal) / 0.35)' }}
+            onClick={copyWhatsApp}
+          >
+            {copied ? 'Copied ✓' : `Copy crew list for WhatsApp (${selected.length})`}
+          </button>
+        </FloatingBar>
+      )}
     </main>
   )
 }

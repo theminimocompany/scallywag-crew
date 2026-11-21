@@ -3,7 +3,7 @@ import {
   fetchRaces, fetchAllSignups, addRace, deleteRace,
   groupByMonth, type Race, type Signup,
 } from '@/lib/api'
-import { Spinner, Empty, ErrorBox, DateBlock } from '@/components/bits'
+import { Spinner, Empty, ErrorBox, DateBlock, RaceMeta } from '@/components/bits'
 import { navigate } from '@/lib/hash'
 import { currentTenantSlug } from '@/lib/tenant'
 
@@ -15,6 +15,8 @@ export default function AdminRaces() {
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState('')
   const [date, setDate] = useState('')
+  const [startTime, setStartTime] = useState('')
+  const [location, setLocation] = useState('')
   const [busy, setBusy] = useState(false)
 
   const load = () => {
@@ -46,8 +48,8 @@ export default function AdminRaces() {
     if (!name.trim() || !date) return
     setBusy(true)
     try {
-      await addRace(name.trim(), date)
-      setName(''); setDate(''); setAdding(false)
+      await addRace(name.trim(), date, { startTime, location })
+      setName(''); setDate(''); setStartTime(''); setLocation(''); setAdding(false)
       load()
     } catch (e2) { setErr((e2 as Error).message) } finally { setBusy(false) }
   }
@@ -77,10 +79,26 @@ export default function AdminRaces() {
       </div>
 
       {adding && (
-        <form onSubmit={submitAdd} className="panel p-4 flex gap-2 flex-wrap fade-in">
-          <input className="input flex-1 min-w-48" placeholder="Race name" value={name} onChange={e => setName(e.target.value)} required />
-          <input className="input" type="date" value={date} onChange={e => setDate(e.target.value)} required aria-label="Race date" />
-          <button className="btn-primary" disabled={busy} type="submit">{busy ? 'Saving…' : 'Save'}</button>
+        <form onSubmit={submitAdd} className="panel p-4 space-y-3 fade-in">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="space-y-1 sm:col-span-2">
+              <span className="text-xs font-medium">Race name</span>
+              <input className="input" placeholder="Race name" value={name} onChange={e => setName(e.target.value)} required />
+            </label>
+            <label className="space-y-1">
+              <span className="text-xs font-medium">Race date</span>
+              <input className="input" type="date" value={date} onChange={e => setDate(e.target.value)} required aria-label="Race date" />
+            </label>
+            <label className="space-y-1">
+              <span className="text-xs font-medium">Start time <span style={{ color: 'hsl(var(--slate))' }}>(optional)</span></span>
+              <input className="input" type="time" value={startTime} onChange={e => setStartTime(e.target.value)} aria-label="Race start time, optional" />
+            </label>
+            <label className="space-y-1 sm:col-span-2">
+              <span className="text-xs font-medium">Location <span style={{ color: 'hsl(var(--slate))' }}>(optional)</span></span>
+              <input className="input" placeholder="e.g. Victoria Harbour" value={location} onChange={e => setLocation(e.target.value)} />
+            </label>
+          </div>
+          <button className="btn-primary" disabled={busy} type="submit">{busy ? 'Saving…' : 'Save race'}</button>
         </form>
       )}
 
@@ -105,6 +123,7 @@ export default function AdminRaces() {
                     onClick={() => navigate(`/t/${currentTenantSlug()}/admin/races/${r.id}`)}
                   >
                     <span className={`font-medium leading-snug block ${past ? 'opacity-60' : ''}`}>{r.name}</span>
+                    <RaceMeta startTime={r.start_time} location={r.location} />
                     <span className="flex flex-wrap gap-1.5 mt-1.5">
                       <span className="chip" style={{ minHeight: 26, fontSize: 12 }}>
                         <span className="dot" aria-hidden />{c.a} available

@@ -4,7 +4,7 @@ import {
   groupByMonth, type DirectoryEntry, type ScheduleRow,
 } from '@/lib/api'
 import { PublicHeader, PublicTabs, FloatingBar } from '@/components/chrome'
-import { Spinner, Empty, ErrorBox, DateBlock } from '@/components/bits'
+import { Spinner, Empty, ErrorBox, DateBlock, RaceMeta } from '@/components/bits'
 
 export default function PublicSignup() {
   const [dir, setDir] = useState<DirectoryEntry[] | null>(null)
@@ -149,7 +149,10 @@ export default function PublicSignup() {
               {pickedRaces.map(r => (
                 <div key={r.race_id} className="flex items-center gap-3" style={{ padding: '10px 12px', minHeight: 44 }}>
                   <DateBlock iso={r.race_date} />
-                  <span className="font-medium leading-snug flex-1 min-w-0">{r.race_name}</span>
+                  <div className="font-medium leading-snug flex-1 min-w-0">
+                    <span>{r.race_name}</span>
+                    <RaceMeta startTime={r.start_time} location={r.location} />
+                  </div>
                 </div>
               ))}
             </div>
@@ -288,7 +291,10 @@ export default function PublicSignup() {
                     {rs.map(r => r.signup_closed ? (
                       <div key={r.race_id} className="checkrow" style={{ opacity: 0.55, cursor: 'default' }}>
                         <DateBlock iso={r.race_date} />
-                        <span className="font-medium leading-snug flex-1 min-w-0">{r.race_name}</span>
+                        <div className="font-medium leading-snug flex-1 min-w-0">
+                          <span>{r.race_name}</span>
+                          <RaceMeta startTime={r.start_time} location={r.location} />
+                        </div>
                         <span className="chip" aria-label="Sign-ups closed for this race">Closed</span>
                       </div>
                     ) : (
@@ -300,7 +306,10 @@ export default function PublicSignup() {
                           onChange={() => toggle(r.race_id)}
                         />
                         <DateBlock iso={r.race_date} />
-                        <span className="font-medium leading-snug flex-1 min-w-0">{r.race_name}</span>
+                        <div className="font-medium leading-snug flex-1 min-w-0">
+                          <span>{r.race_name}</span>
+                          <RaceMeta startTime={r.start_time} location={r.location} />
+                        </div>
                       </label>
                     ))}
                   </div>
