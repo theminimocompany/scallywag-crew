@@ -72,7 +72,7 @@ export default function PublicSchedule({ preview = false }: { preview?: boolean 
     }
     const messages = {
       schedule: 'You are viewing the Step 2A public-schedule preview.',
-      signup: 'The existing signup flow is unchanged and will be restyled in Step 2B.',
+      signup: 'The public signup preview now includes the form, review, success and closed states.',
       admin: 'Admin is unchanged in Step 2A and will be restyled in a later phase.',
     }
     setPreviewAction(messages[destination])

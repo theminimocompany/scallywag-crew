@@ -364,7 +364,7 @@
   .cl-crew-list { gap: 6px; }
 }
 
-/* Step 2B public signup. Submission success and global closed states remain Step 2C. */
+/* Steps 2B–2C public signup, review and outcome states. */
 .cl-public-signup { background: var(--cl-page); }
 .cl-signup-main, .cl-review-main { max-width: 960px; padding-top: 52px; padding-bottom: 176px; }
 .cl-signup-main .cl-page-header h1, .cl-review-main .cl-page-header h1 { font-size: clamp(36px, 4vw, 48px); }
@@ -389,7 +389,10 @@
 .cl-signup-race--open:hover { background: #f5f9ff; }
 .cl-signup-race--picked, .cl-signup-race--picked:hover { background: var(--cl-accent-soft); }
 .cl-signup-race--open > input { width: 18px; height: 18px; margin: 0; accent-color: var(--cl-accent); cursor: pointer; }
-.cl-signup-race--closed { grid-template-columns: 46px minmax(0, 1fr) auto; opacity: 0.6; }
+.cl-signup-race--closed { grid-template-columns: 46px minmax(0, 1fr); opacity: 0.6; }
+.cl-signup-race__details { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-width: 0; }
+.cl-signup-race__details > .cl-signup-race__content { flex: 1; }
+.cl-signup-race__details > .cl-status { flex: none; justify-self: start; }
 .cl-signup-race__content { min-width: 0; }
 .cl-signup-race__name { display: block; font-size: 15px; font-weight: 600; line-height: 1.4; letter-spacing: -0.015em; overflow-wrap: anywhere; }
 .cl-signup-action { position: fixed; right: 0; bottom: 0; left: 0; z-index: 40; padding-top: 30px; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); background: linear-gradient(to top, var(--cl-page) 65%, rgb(247 250 255 / 0)); pointer-events: none; }
@@ -402,6 +405,18 @@
 .cl-review-races { overflow: hidden; }
 .cl-review-race { display: grid; grid-template-columns: 46px minmax(0, 1fr); align-items: center; gap: 18px; min-height: 88px; padding: 16px 20px; }
 .cl-review-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.cl-signup-outcome-main { max-width: 720px; padding-top: 52px; padding-bottom: 72px; }
+.cl-signup-outcome { margin-top: 32px; padding: 32px; }
+.cl-signup-outcome__icon { display: block; width: 30px; height: 30px; margin-bottom: 24px; color: var(--cl-success); }
+.cl-signup-outcome .cl-eyebrow { margin-bottom: 12px; color: var(--cl-success); }
+.cl-signup-outcome h1 { margin: 0; font-size: clamp(30px, 4vw, 42px); line-height: 1.1; letter-spacing: -0.045em; overflow-wrap: anywhere; }
+.cl-signup-outcome__summary { margin: 24px 0 0; font-size: 17px; font-weight: 600; }
+.cl-signup-outcome__copy { max-width: 62ch; margin: 10px 0 0; color: var(--cl-slate); font-size: 15px; line-height: 1.65; }
+.cl-signup-outcome__copy--muted { margin-top: 18px; color: var(--cl-muted); font-size: 13px; }
+.cl-signup-outcome__actions { display: flex; margin-top: 28px; }
+.cl-signup-closed { padding: 28px; }
+.cl-signup-closed h2 { margin: 0; font-size: 20px; line-height: 1.3; letter-spacing: -0.025em; }
+.cl-signup-closed p { max-width: 62ch; margin: 10px 0 0; color: var(--cl-slate); font-size: 15px; line-height: 1.65; }
 
 @media (max-width: 800px) {
   .cl-signup-form { grid-template-columns: 1fr; }
@@ -414,11 +429,16 @@
   .cl-signup-race { gap: 12px; padding: 16px 14px; }
   .cl-signup-race--open { grid-template-columns: 20px 38px minmax(0, 1fr); }
   .cl-signup-race--closed { grid-template-columns: 38px minmax(0, 1fr); align-items: start; }
-  .cl-signup-race--closed > .cl-status { grid-column: 2; }
+  .cl-signup-race--closed > .cl-signup-race__details { display: grid; gap: 8px; }
   .cl-signup-race .cl-schedule-date strong, .cl-review-race .cl-schedule-date strong { font-size: 21px; }
   .cl-signup-review-action > .cl-button { width: 100%; }
   .cl-review-grid { margin-top: 28px; }
   .cl-review-race { grid-template-columns: 38px minmax(0, 1fr); gap: 14px; padding-inline: 16px; }
   .cl-review-actions { flex-direction: column-reverse; }
   .cl-review-actions > .cl-button { width: 100%; }
+  .cl-signup-outcome-main { padding-top: 36px; padding-bottom: 48px; }
+  .cl-signup-outcome { margin-top: 24px; padding: 24px 20px; }
+  .cl-signup-outcome__icon { margin-bottom: 20px; }
+  .cl-signup-outcome__actions > .cl-button { width: 100%; }
+  .cl-signup-closed { padding: 24px 20px; }
 }

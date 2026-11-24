@@ -170,7 +170,10 @@ export default function App() {
   if (seg[0] === 'reset-password') return <ResetPassword session={session} authReady={authReady} />
 
   // Isolated design previews; the production root remains Scallywag.
-  if (seg[0] === 'mockups' && seg[1] === 'signup') return <PublicSignup preview />
+  if (seg[0] === 'mockups' && seg[1] === 'signup' && seg[2] === 'closed') {
+    return <PublicSignup key="signup-closed-preview" preview previewClosed />
+  }
+  if (seg[0] === 'mockups' && seg[1] === 'signup') return <PublicSignup key="signup-open-preview" preview />
   if (seg[0] === 'mockups' && seg[1] === 'schedule') return <PublicSchedule preview />
   if (seg[0] === 'mockups') return <DesignFoundation />
 

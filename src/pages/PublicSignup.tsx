@@ -4,7 +4,6 @@ import {
   fetchDirectory, fetchSchedule, submitSignups, registerCrew, getTenant,
   fmtDate, fmtTime, groupByMonth, type DirectoryEntry, type ScheduleRow,
 } from '@/lib/api'
-import { PublicHeader } from '@/components/chrome'
 import { ClButton, ClEmpty, ClInput, ClNotice, ClPageHeader, ClSkeleton, ClStatus, TeamBrand } from '@/components/CrewlistUI'
 import { navigate } from '@/lib/hash'
 import { currentTenantSlug, useTeamName } from '@/lib/tenant'
@@ -66,13 +65,19 @@ function SignupActionBar({ children }: { children: ReactNode }) {
   )
 }
 
-export default function PublicSignup({ preview = false }: { preview?: boolean }) {
+export default function PublicSignup({
+  preview = false,
+  previewClosed = false,
+}: {
+  preview?: boolean
+  previewClosed?: boolean
+}) {
   const [dir, setDir] = useState<DirectoryEntry[] | null>(preview ? previewDirectory : null)
   const [races, setRaces] = useState<ScheduleRow[] | null>(preview ? previewRaces : null)
   const [err, setErr] = useState<string | null>(null)
   // undefined = still unknown (pre-settings-migration tenants report undefined too);
   // only an explicit false closes the form.
-  const [signupOpen, setSignupOpen] = useState<boolean | undefined>(preview ? true : undefined)
+  const [signupOpen, setSignupOpen] = useState<boolean | undefined>(preview ? !previewClosed : undefined)
 
   const [crewId, setCrewId] = useState<string | null>(null)
   const [picked, setPicked] = useState<Set<string>>(new Set())
@@ -83,7 +88,9 @@ export default function PublicSignup({ preview = false }: { preview?: boolean })
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState<{ name: string; count: number; pending: boolean } | null>(null)
   const [formErr, setFormErr] = useState<string | null>(null)
-  const [previewAction, setPreviewAction] = useState('Synthetic Testing101 data. Selection and review are interactive; submission is disabled.')
+  const [previewAction, setPreviewAction] = useState(previewClosed
+    ? 'Synthetic Testing101 data. Global sign-up closure is previewed without reading or changing tenant settings.'
+    : 'Synthetic Testing101 data. Confirm and submit simulates the success state locally; no data is sent.')
   const liveTeamName = useTeamName()
   const teamName = preview ? 'Testing101' : liveTeamName
   const base = `/t/${currentTenantSlug()}`
@@ -107,8 +114,8 @@ export default function PublicSignup({ preview = false }: { preview?: boolean })
       return
     }
     setPreviewAction(destination === 'schedule'
-      ? 'The public schedule was restyled in Step 2A. This preview stays on the signup page.'
-      : 'Admin is unchanged in Step 2B and will be restyled in a later phase.')
+      ? 'The public schedule is outside this signup outcome preview. No live page was opened.'
+      : 'Admin is unchanged and will be restyled in a later phase.')
   }
 
   const filtered = useMemo(() => {
@@ -153,7 +160,9 @@ export default function PublicSignup({ preview = false }: { preview?: boolean })
   async function submit() {
     setFormErr(null)
     if (preview) {
-      setPreviewAction('Submission and the final success state belong to Step 2C. No crew or signup data was sent.')
+      setPreviewAction('Synthetic Testing101 data. This success screen was reached without registering crew or creating sign-ups.')
+      setDone({ name: selectedName, count: picked.size, pending: newMode })
+      window.scrollTo({ top: 0 })
       return
     }
     setBusy(true)
@@ -170,29 +179,49 @@ export default function PublicSignup({ preview = false }: { preview?: boolean })
     }
   }
 
+  function resetSignup() {
+    setDone(null)
+    setConfirming(false)
+    setPicked(new Set())
+    setCrewId(null)
+    setNewMode(false)
+    setNewName('')
+    if (preview) {
+      setPreviewAction('Synthetic Testing101 data. Confirm and submit simulates the success state locally; no data is sent.')
+    }
+    window.scrollTo({ top: 0 })
+  }
+
   if (done) {
     return (
-      <div className="min-h-100dvh flex flex-col">
-        <PublicHeader />
-        <main className="page flex-1 py-10 fade-in">
-          <div className="panel p-8 text-center space-y-3">
-            <div className="mx-auto grid place-content-center rounded-full" style={{ width: 56, height: 56, background: 'hsl(var(--tint))' }} aria-hidden>
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--royal))" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-            </div>
-            <h1 className="font-semibold" style={{ fontSize: 22 }}>You're on the list, {done.name}</h1>
-            <p className="text-sm" style={{ color: 'hsl(var(--slate))' }}>
-              {done.count} race{done.count > 1 ? 's' : ''} submitted.
+      <div className="cl-root cl-public-signup">
+        <header className="cl-public-header">
+          <div className="cl-container cl-public-header__inner">
+            <button type="button" className="cl-public-brand" onClick={() => go(`${base}/schedule`, 'schedule')} aria-label={`${teamName} home`}><TeamBrand teamName={teamName} /></button>
+            <ClButton variant="text" size="small" onClick={() => go(`${base}/admin`, 'admin')}>Admin</ClButton>
+          </div>
+        </header>
+        <main className="cl-container cl-signup-outcome-main">
+          {preview && <div className="cl-signup-preview-notice"><ClNotice tone="info" title="Step 2C preview">{previewAction}</ClNotice></div>}
+          <section className="cl-panel cl-signup-outcome" aria-labelledby="signup-success-title">
+            <span className="cl-signup-outcome__icon" aria-hidden="true">
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            </span>
+            <p className="cl-eyebrow">SIGN-UP SUBMITTED</p>
+            <h1 id="signup-success-title">You're on the list, {done.name}</h1>
+            <p className="cl-signup-outcome__summary">{done.count} race{done.count > 1 ? 's' : ''} submitted.</p>
+            <p className="cl-signup-outcome__copy">
               {done.pending
-                ? ' As a new crew member, the team will review your details before you appear publicly.'
-                : ' The team will confirm the selected crew closer to race day.'}
+                ? 'As a new crew member, the team will review your details before you appear publicly.'
+                : 'The team will confirm the selected crew closer to race day.'}
             </p>
-            <p className="text-sm" style={{ color: 'hsl(var(--slate))' }}>
+            <p className="cl-signup-outcome__copy cl-signup-outcome__copy--muted">
               Need to withdraw? Message the team directly and they'll take you off the list.
             </p>
-            <button className="btn-ghost w-full" onClick={() => { setDone(null); setConfirming(false); setPicked(new Set()); setCrewId(null); setNewMode(false); setNewName('') }}>
-              Sign up for more races
-            </button>
-          </div>
+            <div className="cl-signup-outcome__actions">
+              <ClButton onClick={resetSignup}>Sign up for more races</ClButton>
+            </div>
+          </section>
         </main>
       </div>
     )
@@ -209,7 +238,7 @@ export default function PublicSignup({ preview = false }: { preview?: boolean })
         </header>
         <main className="cl-container cl-review-main">
           <ClPageHeader eyebrow="REVIEW SIGN-UP" title="Confirm your sign-up" description="Check the details below, then confirm." />
-          {preview && <div className="cl-signup-preview-notice"><ClNotice tone="info" title="Step 2B preview">{previewAction}</ClNotice></div>}
+          {preview && <div className="cl-signup-preview-notice"><ClNotice tone="info" title="Step 2C preview">{previewAction}</ClNotice></div>}
           <div className="cl-review-grid">
             <section>
               <h2 className="cl-signup-section__heading">Your name</h2>
@@ -252,7 +281,7 @@ export default function PublicSignup({ preview = false }: { preview?: boolean })
           title="Crew sign-up"
           description="Pick your name, tick the races you can do. The team confirms selection closer to the day."
         />
-        {preview && <div className="cl-signup-preview-notice"><ClNotice tone="info" title="Step 2B preview">{previewAction}</ClNotice></div>}
+        {preview && <div className="cl-signup-preview-notice"><ClNotice tone="info" title="Step 2C preview">{previewAction}</ClNotice></div>}
 
         <nav className="cl-public-tabs" aria-label="Public pages">
           <button className="cl-public-tab" onClick={() => go(`${base}/schedule`, 'schedule')}>Race schedule</button>
@@ -264,13 +293,13 @@ export default function PublicSignup({ preview = false }: { preview?: boolean })
 
         {!err && signupOpen === false && dir && races && (
           <div className="cl-signup-state">
-            <div className="panel p-8 text-center space-y-2">
-              <p className="font-medium">Sign-ups are closed</p>
-              <p className="text-sm" style={{ color: 'hsl(var(--slate))' }}>
+            <section className="cl-panel cl-signup-closed" aria-labelledby="signup-closed-title">
+              <h2 id="signup-closed-title">Sign-ups are closed</h2>
+              <p>
                 The team isn't taking availability right now. Check the race
                 schedule for confirmed crew lists, and check back here later.
               </p>
-            </div>
+            </section>
           </div>
         )}
 
@@ -329,8 +358,10 @@ export default function PublicSignup({ preview = false }: { preview?: boolean })
                       {rs.map(r => r.signup_closed ? (
                         <div key={r.race_id} className="cl-signup-race cl-signup-race--closed">
                           <SignupDate iso={r.race_date} />
-                          <RaceContent race={r} />
-                          <ClStatus tone="neutral" label="Sign-ups closed for this race">Closed</ClStatus>
+                          <div className="cl-signup-race__details">
+                            <RaceContent race={r} />
+                            <ClStatus tone="neutral" label="Sign-ups closed for this race">Closed</ClStatus>
+                          </div>
                         </div>
                       ) : (
                         <label key={r.race_id} className={`cl-signup-race cl-signup-race--open${picked.has(r.race_id) ? ' cl-signup-race--picked' : ''}`}>
