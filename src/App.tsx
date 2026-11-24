@@ -23,6 +23,7 @@ import AcceptInvite from '@/pages/AcceptInvite'
 import InviteAuth from '@/pages/InviteAuth'
 import ForgotPassword from '@/pages/ForgotPassword'
 import ResetPassword from '@/pages/ResetPassword'
+import DesignFoundation from '@/pages/DesignFoundation'
 import { getTenant, clearTenantCache } from '@/lib/api'
 import { setTeamName, setTenantSlug } from '@/lib/tenant'
 
@@ -167,6 +168,9 @@ export default function App() {
   // console, invitation and onboarding return destinations.
   if (seg[0] === 'forgot-password') return <ForgotPassword />
   if (seg[0] === 'reset-password') return <ResetPassword session={session} authReady={authReady} />
+
+  // Isolated design-system preview; the production root remains Scallywag.
+  if (seg[0] === 'mockups') return <DesignFoundation />
 
   // ---- Crewlist console (super admin) ----
   if (seg[0] === 'console') {
