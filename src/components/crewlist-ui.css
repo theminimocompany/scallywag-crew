@@ -442,3 +442,32 @@
   .cl-signup-outcome__actions > .cl-button { width: 100%; }
   .cl-signup-closed { padding: 24px 20px; }
 }
+
+
+/* Step 3A shared login and password-recovery screens. */
+.cl-auth { background: var(--cl-page); }
+.cl-auth .cl-button--small { min-height: 44px; }
+.cl-auth .cl-button[aria-busy='true']:disabled { opacity: 1; cursor: wait; }
+.cl-auth-main { max-width: 560px; padding-top: 56px; padding-bottom: 72px; }
+.cl-auth-preview { margin-bottom: 16px; }
+.cl-auth-panel { padding: 32px; }
+.cl-auth-heading { margin-bottom: 28px; }
+.cl-auth-heading .cl-eyebrow { margin-bottom: 12px; }
+.cl-auth-heading h1, .cl-auth-loading h1 { margin: 0; font-size: clamp(30px, 4vw, 40px); line-height: 1.12; letter-spacing: -0.045em; overflow-wrap: anywhere; }
+.cl-auth-heading > p:last-child, .cl-auth-loading p { margin: 12px 0 0; color: var(--cl-slate); font-size: 15px; line-height: 1.65; }
+.cl-auth-form, .cl-auth-stack { display: grid; gap: 18px; }
+.cl-auth-form__meta { display: flex; justify-content: flex-end; margin-top: -6px; }
+.cl-auth-form__meta .cl-button { min-height: 44px; }
+.cl-auth-footer-action { display: flex; margin-top: 16px; }
+.cl-auth-email { color: var(--cl-ink); font-weight: 600; overflow-wrap: anywhere; }
+.cl-input[readonly] { background: #f2f6fc; color: var(--cl-slate); }
+.cl-auth-loading { display: grid; justify-items: start; padding: 20px 0; }
+.cl-auth-loading h1 { margin-top: 24px; }
+.cl-auth-spinner { width: 28px; height: 28px; border: 2px solid var(--cl-line-strong); border-top-color: var(--cl-accent); border-radius: 50%; animation: cl-spin 700ms linear infinite; }
+
+@media (max-width: 640px) {
+  .cl-auth-main { padding-top: 32px; padding-bottom: 48px; }
+  .cl-auth-panel { padding: 24px 20px; }
+  .cl-auth-heading { margin-bottom: 24px; }
+  .cl-auth-heading h1, .cl-auth-loading h1 { font-size: 30px; }
+}

@@ -2,22 +2,42 @@ import { useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { navigate } from '@/lib/hash'
-import { ErrText } from '@/components/bits'
-import { Spinner } from '@/components/bits'
+import { ClAuthShell, ClButton, ClInput, ClNotice } from '@/components/CrewlistUI'
 
-export default function ResetPassword({ session, authReady }: { session: Session | null; authReady: boolean }) {
-  const [password, setPassword] = useState('')
-  const [confirmation, setConfirmation] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [err, setErr] = useState<string | null>(null)
+type ResetPreview = 'checking' | 'invalid' | 'form' | 'validation' | 'mismatch' | 'loading' | 'error' | 'success' | 'warning'
+
+export default function ResetPassword({
+  session,
+  authReady,
+  preview,
+}: {
+  session: Session | null
+  authReady: boolean
+  preview?: ResetPreview
+}) {
+  const [password, setPassword] = useState(preview ? preview === 'validation' ? 'short' : 'synthetic-password' : '')
+  const [confirmation, setConfirmation] = useState(preview ? preview === 'mismatch' ? 'different-password' : preview === 'validation' ? 'short' : 'synthetic-password' : '')
+  const [busy, setBusy] = useState(preview === 'loading')
+  const [err, setErr] = useState<string | null>(
+    preview === 'validation' ? 'Use at least 8 characters for your new password.'
+      : preview === 'mismatch' ? 'The two passwords do not match.'
+        : preview === 'error' ? 'Your password could not be updated. Try again.' : null,
+  )
   const [done, setDone] = useState(false)
-  const [warning, setWarning] = useState<string | null>(null)
+  const [warning, setWarning] = useState<string | null>(preview === 'warning' ? 'Your password was changed, but other devices could not be signed out automatically.' : null)
+  const [previewAction, setPreviewAction] = useState('Synthetic recovery state. No password, Auth session or recovery-storage change is made in this preview.')
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setErr(null)
     if (password.length < 8) return setErr('Use at least 8 characters for your new password.')
     if (password !== confirmation) return setErr('The two passwords do not match.')
+
+    if (preview) {
+      setPreviewAction('The updated state was reached locally. No password was changed and no device was signed out.')
+      setDone(true)
+      return
+    }
 
     setBusy(true)
     const { error } = await supabase.auth.updateUser({ password })
@@ -35,10 +55,18 @@ export default function ResetPassword({ session, authReady }: { session: Session
   }
 
   function backToSignIn() {
+    if (preview) {
+      setPreviewAction('Sign-in navigation is disabled in this isolated preview. Your return destination was not changed.')
+      return
+    }
     navigate(sessionStorage.getItem('crewlist_auth_return') || '#/login')
   }
 
   function continueToDestination() {
+    if (preview) {
+      setPreviewAction('Continue is disabled in this isolated preview. No recovery keys were cleared and no live page was opened.')
+      return
+    }
     const back = sessionStorage.getItem('crewlist_auth_return') || '#/login'
     sessionStorage.removeItem('crewlist_auth_return')
     sessionStorage.removeItem('crewlist_recovery_email')
@@ -46,91 +74,87 @@ export default function ResetPassword({ session, authReady }: { session: Session
     navigate(back)
   }
 
+  const checking = preview ? preview === 'checking' : !authReady
+  const updated = preview ? done || preview === 'success' || preview === 'warning' : done
+  const invalid = preview ? preview === 'invalid' : !session
+  const showSignIn = preview ? preview === 'checking' || preview === 'invalid' : !session
+
   return (
-    <div className="min-h-100dvh flex flex-col">
-      <header className="hairline-b">
-        <div className="page flex items-center justify-between" style={{ minHeight: 56 }}>
-          <button className="wordmark cursor-pointer" style={{ textTransform: 'none' }} onClick={() => navigate('/join')}>Crewlist.</button>
-          {!session && (
-            <button className="text-xs font-medium cursor-pointer" style={{ color: 'hsl(var(--slate))', minHeight: 44 }} onClick={backToSignIn}>
-              Sign in
-            </button>
-          )}
+    <ClAuthShell
+      onBrand={() => {
+        if (preview) setPreviewAction('Brand navigation is disabled in this isolated preview. No live page was opened.')
+        else navigate('/join')
+      }}
+      preview={preview ? previewAction : undefined}
+      action={showSignIn ? <ClButton variant="text" size="small" onClick={backToSignIn}>Sign in</ClButton> : undefined}
+    >
+      {checking ? (
+        <div className="cl-auth-loading" role="status">
+          <span className="cl-auth-spinner" aria-hidden="true" />
+          <h1>Checking reset link</h1>
+          <p>One moment while we validate this recovery link.</p>
         </div>
-      </header>
-      <main className="page flex-1 py-10 fade-in">
-        <div className="panel p-6 space-y-5">
-          {!authReady ? (
-            <div className="py-8 grid place-content-center"><Spinner label="Checking reset link…" /></div>
-          ) : done ? (
-            <>
-              <div>
-                <h1 className="font-semibold" style={{ fontSize: 22 }}>Password updated</h1>
-                <p className="text-sm mt-1 leading-relaxed" style={{ color: 'hsl(var(--slate))' }}>
-                  Your new password is active. Other devices have been signed out{warning ? ' where possible' : ''}.
-                </p>
-              </div>
-              {warning && (
-                <p className="text-sm leading-relaxed" role="status" style={{ color: 'hsl(var(--slate))' }}>{warning}</p>
-              )}
-              <button className="btn-primary w-full" onClick={continueToDestination}>Continue</button>
-            </>
-          ) : !session ? (
-            <>
-              <div>
-                <h1 className="font-semibold" style={{ fontSize: 22 }}>This reset link is no longer valid</h1>
-                <p className="text-sm mt-1 leading-relaxed" style={{ color: 'hsl(var(--slate))' }}>
-                  It may have expired or already been used. Request a fresh link to continue.
-                </p>
-              </div>
-              <button className="btn-primary w-full" onClick={() => navigate('/forgot-password')}>Request a new link</button>
-              <button className="btn-ghost w-full" onClick={backToSignIn}>Back to sign in</button>
-            </>
-          ) : (
-            <>
-              <div>
-                <h1 className="font-semibold" style={{ fontSize: 22 }}>Choose a new password</h1>
-                <p className="text-sm mt-1 leading-relaxed" style={{ color: 'hsl(var(--slate))' }}>
-                  Use at least eight characters. This will sign out your other devices.
-                </p>
-              </div>
-              <form onSubmit={submit} className="space-y-4">
-                <div>
-                  <label htmlFor="new-password" className="text-xs font-medium block mb-1.5">New password</label>
-                  <input
-                    id="new-password"
-                    className="input"
-                    type="password"
-                    required
-                    minLength={8}
-                    autoComplete="new-password"
-                    autoFocus
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="confirm-password" className="text-xs font-medium block mb-1.5">Confirm new password</label>
-                  <input
-                    id="confirm-password"
-                    className="input"
-                    type="password"
-                    required
-                    minLength={8}
-                    autoComplete="new-password"
-                    value={confirmation}
-                    onChange={e => setConfirmation(e.target.value)}
-                  />
-                </div>
-                {err && <ErrText>{err}</ErrText>}
-                <button className="btn-primary w-full" disabled={busy} type="submit">
-                  {busy ? 'Updating…' : 'Update password'}
-                </button>
-              </form>
-            </>
-          )}
+      ) : updated ? (
+        <div className="cl-auth-stack">
+          <div className="cl-auth-heading">
+            <p className="cl-eyebrow">PASSWORD UPDATED</p>
+            <h1>Password updated</h1>
+            <p>Your new password is active. Other devices have been signed out{warning ? ' where possible' : ''}.</p>
+          </div>
+          {warning && <ClNotice tone="warning" title="Other devices may still be signed in">{warning}</ClNotice>}
+          <ClButton full onClick={continueToDestination}>Continue</ClButton>
         </div>
-      </main>
-    </div>
+      ) : invalid ? (
+        <div className="cl-auth-stack">
+          <div className="cl-auth-heading">
+            <p className="cl-eyebrow">RECOVERY LINK</p>
+            <h1>This reset link is no longer valid</h1>
+            <p>It may have expired or already been used. Request a fresh link to continue.</p>
+          </div>
+          <ClButton full onClick={() => {
+            if (preview) setPreviewAction('A fresh recovery link is requested from the separate forgot-password preview. No live page was opened.')
+            else navigate('/forgot-password')
+          }}>
+            Request a new link
+          </ClButton>
+          <ClButton variant="secondary" full onClick={backToSignIn}>Back to sign in</ClButton>
+        </div>
+      ) : (
+        <>
+          <div className="cl-auth-heading">
+            <p className="cl-eyebrow">NEW PASSWORD</p>
+            <h1>Choose a new password</h1>
+            <p>Use at least eight characters. This will sign out your other devices.</p>
+          </div>
+          <form onSubmit={submit} className="cl-auth-form">
+            <ClInput
+              id="new-password"
+              label="New password"
+              type="password"
+              required
+              minLength={8}
+              autoComplete="new-password"
+              autoFocus
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+            />
+            <ClInput
+              id="confirm-password"
+              label="Confirm new password"
+              type="password"
+              required
+              minLength={8}
+              autoComplete="new-password"
+              value={confirmation}
+              onChange={e => setConfirmation(e.target.value)}
+            />
+            {err && <ClNotice tone="error" title="Password not changed">{err}</ClNotice>}
+            <ClButton full loading={busy} type="submit">
+              {busy ? 'Updating…' : 'Update password'}
+            </ClButton>
+          </form>
+        </>
+      )}
+    </ClAuthShell>
   )
 }

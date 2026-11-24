@@ -170,6 +170,33 @@ export default function App() {
   if (seg[0] === 'reset-password') return <ResetPassword session={session} authReady={authReady} />
 
   // Isolated design previews; the production root remains Scallywag.
+  if (seg[0] === 'mockups' && seg[1] === 'auth') {
+    const page = seg[2] ?? 'login'
+    const state = seg[3] ?? 'default'
+    if (page === 'login') {
+      if (state === 'loading') return <AdminLogin key="login-loading" crewlist preview="loading" />
+      if (state === 'error') return <AdminLogin key="login-error" crewlist preview="error" />
+      return <AdminLogin key="login-default" crewlist preview="default" />
+    }
+    if (page === 'forgot-password') {
+      if (state === 'loading') return <ForgotPassword key="forgot-loading" preview="loading" />
+      if (state === 'error') return <ForgotPassword key="forgot-error" preview="error" />
+      if (state === 'sent') return <ForgotPassword key="forgot-sent" preview="sent" />
+      if (state === 'invitation') return <ForgotPassword key="forgot-invitation" preview="invitation" />
+      return <ForgotPassword key="forgot-default" preview="default" />
+    }
+    if (page === 'reset-password') {
+      if (state === 'checking') return <ResetPassword key="reset-checking" session={null} authReady preview="checking" />
+      if (state === 'invalid') return <ResetPassword key="reset-invalid" session={null} authReady preview="invalid" />
+      if (state === 'validation') return <ResetPassword key="reset-validation" session={null} authReady preview="validation" />
+      if (state === 'mismatch') return <ResetPassword key="reset-mismatch" session={null} authReady preview="mismatch" />
+      if (state === 'loading') return <ResetPassword key="reset-loading" session={null} authReady preview="loading" />
+      if (state === 'error') return <ResetPassword key="reset-error" session={null} authReady preview="error" />
+      if (state === 'success') return <ResetPassword key="reset-success" session={null} authReady preview="success" />
+      if (state === 'warning') return <ResetPassword key="reset-warning" session={null} authReady preview="warning" />
+      return <ResetPassword key="reset-form" session={null} authReady preview="form" />
+    }
+  }
   if (seg[0] === 'mockups' && seg[1] === 'signup' && seg[2] === 'closed') {
     return <PublicSignup key="signup-closed-preview" preview previewClosed />
   }

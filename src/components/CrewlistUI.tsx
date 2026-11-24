@@ -24,6 +24,42 @@ export function TeamBrand({ teamName }: { teamName: string }) {
   )
 }
 
+export function ClAuthShell({
+  children,
+  teamName,
+  onBrand,
+  action,
+  preview,
+}: {
+  children: ReactNode
+  teamName?: string
+  onBrand: () => void
+  action?: ReactNode
+  preview?: string
+}) {
+  return (
+    <div className="cl-root cl-auth">
+      <header className="cl-public-header">
+        <div className="cl-container cl-public-header__inner">
+          <button
+            type="button"
+            className="cl-public-brand"
+            onClick={onBrand}
+            aria-label={teamName ? `${teamName} home` : 'Crewlist home'}
+          >
+            {teamName ? <TeamBrand teamName={teamName} /> : <CrewlistBrand compact />}
+          </button>
+          {action}
+        </div>
+      </header>
+      <main className="cl-container cl-auth-main">
+        {preview && <div className="cl-auth-preview"><ClNotice tone="info" title="Step 3A preview">{preview}</ClNotice></div>}
+        <div className="cl-panel cl-auth-panel">{children}</div>
+      </main>
+    </div>
+  )
+}
+
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'text'
   size?: 'default' | 'small'
