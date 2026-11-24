@@ -1,18 +1,78 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import {
   fetchDirectory, fetchSchedule, submitSignups, registerCrew, getTenant,
-  groupByMonth, type DirectoryEntry, type ScheduleRow,
+  fmtDate, fmtTime, groupByMonth, type DirectoryEntry, type ScheduleRow,
 } from '@/lib/api'
-import { PublicHeader, PublicTabs, FloatingBar } from '@/components/chrome'
-import { Spinner, Empty, ErrorBox, DateBlock, RaceMeta } from '@/components/bits'
+import { PublicHeader } from '@/components/chrome'
+import { ClButton, ClEmpty, ClInput, ClNotice, ClPageHeader, ClSkeleton, ClStatus, TeamBrand } from '@/components/CrewlistUI'
+import { navigate } from '@/lib/hash'
+import { currentTenantSlug, useTeamName } from '@/lib/tenant'
 
-export default function PublicSignup() {
-  const [dir, setDir] = useState<DirectoryEntry[] | null>(null)
-  const [races, setRaces] = useState<ScheduleRow[] | null>(null)
+const previewDirectory: DirectoryEntry[] = [
+  { tenant_slug: 'testing101', crew_id: 'preview-alex', name: 'Alex' },
+  { tenant_slug: 'testing101', crew_id: 'preview-morgan', name: 'Morgan' },
+  { tenant_slug: 'testing101', crew_id: 'preview-sam', name: 'Sam' },
+  { tenant_slug: 'testing101', crew_id: 'preview-zoe', name: 'Zoë' },
+]
+
+const previewRaces: ScheduleRow[] = [
+  {
+    tenant_slug: 'testing101', race_id: 'preview-harbour-series', race_name: 'Harbour Series · Race 1',
+    race_date: '2027-01-09', start_time: '09:05', location: 'Victoria Harbour', selected_crew: ['Alex', 'Morgan', 'Sam'],
+  },
+  {
+    tenant_slug: 'testing101', race_id: 'preview-island-race', race_name: 'Island Race',
+    race_date: '2027-01-23', start_time: '10:30', location: 'Royal Hong Kong Yacht Club', selected_crew: [],
+  },
+  {
+    tenant_slug: 'testing101', race_id: 'preview-winter-regatta', race_name: 'Winter Regatta',
+    race_date: '2027-02-06', start_time: '08:45', location: 'Middle Island', selected_crew: ['Alex', 'Morgan'],
+  },
+  {
+    tenant_slug: 'testing101', race_id: 'preview-harbour-series-2', race_name: 'Harbour Series · Race 2',
+    race_date: '2027-02-20', start_time: '09:05', location: 'Victoria Harbour', selected_crew: [], signup_closed: true,
+  },
+]
+
+function SignupDate({ iso }: { iso: string }) {
+  const { day, dow } = fmtDate(iso)
+  return <time className="cl-schedule-date" dateTime={iso}><strong>{day}</strong><span>{dow}</span></time>
+}
+
+function RaceContent({ race }: { race: ScheduleRow }) {
+  const time = fmtTime(race.start_time)
+  const location = race.location?.trim()
+  return (
+    <div className="cl-signup-race__content">
+      <span className="cl-signup-race__name">{race.race_name}</span>
+      {(time || location) && (
+        <p className="cl-schedule-meta">
+          {time && <span className="cl-mono">{time}</span>}
+          {time && location && <span aria-hidden="true"> · </span>}
+          {location}
+        </p>
+      )}
+    </div>
+  )
+}
+
+function SignupActionBar({ children }: { children: ReactNode }) {
+  return createPortal(
+    <div className="cl-signup-action">
+      <div className="cl-container cl-signup-action__inner">{children}</div>
+    </div>,
+    document.body,
+  )
+}
+
+export default function PublicSignup({ preview = false }: { preview?: boolean }) {
+  const [dir, setDir] = useState<DirectoryEntry[] | null>(preview ? previewDirectory : null)
+  const [races, setRaces] = useState<ScheduleRow[] | null>(preview ? previewRaces : null)
   const [err, setErr] = useState<string | null>(null)
   // undefined = still unknown (pre-settings-migration tenants report undefined too);
   // only an explicit false closes the form.
-  const [signupOpen, setSignupOpen] = useState<boolean | undefined>(undefined)
+  const [signupOpen, setSignupOpen] = useState<boolean | undefined>(preview ? true : undefined)
 
   const [crewId, setCrewId] = useState<string | null>(null)
   const [picked, setPicked] = useState<Set<string>>(new Set())
@@ -23,14 +83,33 @@ export default function PublicSignup() {
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState<{ name: string; count: number; pending: boolean } | null>(null)
   const [formErr, setFormErr] = useState<string | null>(null)
+  const [previewAction, setPreviewAction] = useState('Synthetic Testing101 data. Selection and review are interactive; submission is disabled.')
+  const liveTeamName = useTeamName()
+  const teamName = preview ? 'Testing101' : liveTeamName
+  const base = `/t/${currentTenantSlug()}`
 
-  const load = () => {
-    setErr(null)
+  const load = useCallback(() => {
+    if (preview) return
     Promise.all([fetchDirectory(), fetchSchedule(), getTenant()])
       .then(([d, s, t]) => { setDir(d); setRaces(s); setSignupOpen(t.signup_open ?? true) })
       .catch(e => setErr(e.message))
+  }, [preview])
+  useEffect(load, [load])
+
+  function retry() {
+    setErr(null)
+    load()
   }
-  useEffect(load, [])
+
+  function go(path: string, destination: 'schedule' | 'admin') {
+    if (!preview) {
+      navigate(path)
+      return
+    }
+    setPreviewAction(destination === 'schedule'
+      ? 'The public schedule was restyled in Step 2A. This preview stays on the signup page.'
+      : 'Admin is unchanged in Step 2B and will be restyled in a later phase.')
+  }
 
   const filtered = useMemo(() => {
     if (!dir) return []
@@ -73,6 +152,10 @@ export default function PublicSignup() {
 
   async function submit() {
     setFormErr(null)
+    if (preview) {
+      setPreviewAction('Submission and the final success state belong to Step 2C. No crew or signup data was sent.')
+      return
+    }
     setBusy(true)
     try {
       let id = crewId
@@ -93,11 +176,7 @@ export default function PublicSignup() {
         <PublicHeader />
         <main className="page flex-1 py-10 fade-in">
           <div className="panel p-8 text-center space-y-3">
-            <div
-              className="mx-auto grid place-content-center rounded-full"
-              style={{ width: 56, height: 56, background: 'hsl(var(--tint))' }}
-              aria-hidden
-            >
+            <div className="mx-auto grid place-content-center rounded-full" style={{ width: 56, height: 56, background: 'hsl(var(--tint))' }} aria-hidden>
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--royal))" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
             </div>
             <h1 className="font-semibold" style={{ fontSize: 22 }}>You're on the list, {done.name}</h1>
@@ -121,220 +200,162 @@ export default function PublicSignup() {
 
   if (confirming) {
     return (
-      <div className="min-h-100dvh flex flex-col">
-        <PublicHeader />
-        <main className="page flex-1 py-5 pb-32 space-y-5 fade-in">
-          <div>
-            <h1 className="font-semibold" style={{ fontSize: 22 }}>Confirm your sign-up</h1>
-            <p className="text-sm mt-0.5" style={{ color: 'hsl(var(--slate))' }}>
-              Check the details below, then confirm.
-            </p>
+      <div className="cl-root cl-public-signup">
+        <header className="cl-public-header">
+          <div className="cl-container cl-public-header__inner">
+            <button type="button" className="cl-public-brand" onClick={() => go(`${base}/schedule`, 'schedule')} aria-label={`${teamName} home`}><TeamBrand teamName={teamName} /></button>
+            <ClButton variant="text" size="small" onClick={() => go(`${base}/admin`, 'admin')}>Admin</ClButton>
           </div>
-
-          <section className="space-y-2">
-            <h2 className="eyebrow">Your name</h2>
-            <div className="panel p-4">
-              <p className="font-medium">{selectedName}</p>
-              {newMode && (
-                <p className="text-xs mt-1" style={{ color: 'hsl(var(--slate))' }}>
-                  New crew — the team will review your details before you appear publicly.
-                </p>
-              )}
-            </div>
-          </section>
-
-          <section className="space-y-2">
-            <h2 className="eyebrow">Races · {pickedRaces.length}</h2>
-            <div className="panel divide-y divide-[hsl(var(--frost))]">
-              {pickedRaces.map(r => (
-                <div key={r.race_id} className="flex items-center gap-3" style={{ padding: '10px 12px', minHeight: 44 }}>
-                  <DateBlock iso={r.race_date} />
-                  <div className="font-medium leading-snug flex-1 min-w-0">
-                    <span>{r.race_name}</span>
-                    <RaceMeta startTime={r.start_time} location={r.location} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <FloatingBar>
-            {formErr && (
-              <p className="panel px-3 py-2 text-sm font-medium" role="alert" style={{ color: 'hsl(var(--destructive))' }}>
-                {formErr}
-              </p>
-            )}
-            <button
-              className="btn-primary w-full"
-              disabled={busy}
-              onClick={submit}
-              style={{ boxShadow: '0 10px 24px hsl(var(--royal) / 0.35)' }}
-            >
-              {busy ? 'Submitting…' : 'Confirm and submit'}
-            </button>
-            <button className="btn-ghost w-full" disabled={busy} onClick={() => { setConfirming(false); setFormErr(null) }}>
-              Back to edit
-            </button>
-          </FloatingBar>
+        </header>
+        <main className="cl-container cl-review-main">
+          <ClPageHeader eyebrow="REVIEW SIGN-UP" title="Confirm your sign-up" description="Check the details below, then confirm." />
+          {preview && <div className="cl-signup-preview-notice"><ClNotice tone="info" title="Step 2B preview">{previewAction}</ClNotice></div>}
+          <div className="cl-review-grid">
+            <section>
+              <h2 className="cl-signup-section__heading">Your name</h2>
+              <div className="cl-panel cl-panel__body">
+                <p className="cl-review-name">{selectedName}</p>
+                {newMode && <p className="cl-field__hint">New crew — the team will review your details before you appear publicly.</p>}
+              </div>
+            </section>
+            <section>
+              <h2 className="cl-signup-section__heading">Races · {pickedRaces.length}</h2>
+              <div className="cl-panel cl-review-races">
+                {pickedRaces.map(r => <div key={r.race_id} className="cl-review-race"><SignupDate iso={r.race_date} /><RaceContent race={r} /></div>)}
+              </div>
+            </section>
+          </div>
         </main>
+        <SignupActionBar>
+          {formErr && <ClNotice tone="error" title="Couldn’t submit your sign-up">{formErr}</ClNotice>}
+          <div className="cl-review-actions">
+            <ClButton variant="secondary" disabled={busy} onClick={() => { setConfirming(false); setFormErr(null) }}>Back to edit</ClButton>
+            <ClButton loading={busy} onClick={submit}>{busy ? 'Submitting…' : 'Confirm and submit'}</ClButton>
+          </div>
+        </SignupActionBar>
       </div>
     )
   }
 
   return (
-    <div className="min-h-100dvh flex flex-col">
-      <PublicHeader />
-      <main className="page flex-1 py-5 pb-32 space-y-5 fade-in">
-        <PublicTabs active="signup" />
-        <div>
-          <h1 className="font-semibold" style={{ fontSize: 22 }}>Crew sign-up</h1>
-          <p className="text-sm mt-0.5" style={{ color: 'hsl(var(--slate))' }}>
-            Pick your name, tick the races you can do. The team confirms selection closer to the day.
-          </p>
+    <div className="cl-root cl-public-signup">
+      <header className="cl-public-header">
+        <div className="cl-container cl-public-header__inner">
+          <button type="button" className="cl-public-brand" onClick={() => go(`${base}/schedule`, 'schedule')} aria-label={`${teamName} home`}><TeamBrand teamName={teamName} /></button>
+          <ClButton variant="text" size="small" onClick={() => go(`${base}/admin`, 'admin')}>Admin</ClButton>
         </div>
+      </header>
 
-        {err && <ErrorBox message={err} onRetry={load} />}
-        {!err && (!dir || !races || signupOpen === undefined) && <Spinner />}
+      <main className="cl-container cl-signup-main">
+        <ClPageHeader
+          eyebrow="PUBLIC CREW SIGN-UP"
+          title="Crew sign-up"
+          description="Pick your name, tick the races you can do. The team confirms selection closer to the day."
+        />
+        {preview && <div className="cl-signup-preview-notice"><ClNotice tone="info" title="Step 2B preview">{previewAction}</ClNotice></div>}
+
+        <nav className="cl-public-tabs" aria-label="Public pages">
+          <button className="cl-public-tab" onClick={() => go(`${base}/schedule`, 'schedule')}>Race schedule</button>
+          <button className="cl-public-tab cl-public-tab--active" aria-current="page" onClick={() => { if (!preview) navigate(`${base}/signup`) }}>Sign up</button>
+        </nav>
+
+        {err && <div className="cl-signup-state"><ClNotice tone="error" title="Couldn’t load crew sign-up" action={<ClButton variant="secondary" size="small" onClick={retry}>Try again</ClButton>}>{err}</ClNotice></div>}
+        {!err && (!dir || !races || signupOpen === undefined) && <div className="cl-panel cl-panel__body cl-signup-state"><ClSkeleton rows={3} label="Loading crew sign-up" /></div>}
 
         {!err && signupOpen === false && dir && races && (
-          <div className="panel p-8 text-center space-y-2">
-            <p className="font-medium">Sign-ups are closed</p>
-            <p className="text-sm" style={{ color: 'hsl(var(--slate))' }}>
-              The team isn't taking availability right now. Check the race
-              schedule for confirmed crew lists, and check back here later.
-            </p>
+          <div className="cl-signup-state">
+            <div className="panel p-8 text-center space-y-2">
+              <p className="font-medium">Sign-ups are closed</p>
+              <p className="text-sm" style={{ color: 'hsl(var(--slate))' }}>
+                The team isn't taking availability right now. Check the race
+                schedule for confirmed crew lists, and check back here later.
+              </p>
+            </div>
           </div>
         )}
 
         {!err && signupOpen === true && dir && races && (
-          <>
-            {/* Step 1 — who are you */}
-            <section className="space-y-2">
-              <h2 className="eyebrow">1 · Your name</h2>
-              {!newMode ? (
-                <>
-                  {crewId ? (
-                    <div className="panel p-4 flex items-center gap-3">
-                      <span
-                        className="grid place-content-center rounded-full shrink-0"
-                        style={{ width: 32, height: 32, background: 'hsl(var(--tint))' }}
-                        aria-hidden
-                      >
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--royal))" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-                      </span>
-                      <span className="font-semibold flex-1 min-w-0" style={{ fontSize: 16 }}>{selectedName}</span>
-                      <button
-                        className="grid place-content-center rounded-full shrink-0"
-                        style={{ width: 32, height: 32, color: 'hsl(var(--slate))', border: '1.5px solid hsl(var(--frost))' }}
-                        onClick={() => { setCrewId(null); setQuery('') }}
-                        aria-label="Change name"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <input
-                        className="input"
-                        placeholder="Search your name…"
-                        value={query}
-                        onChange={e => setQuery(e.target.value)}
-                        aria-label="Search your name"
-                      />
-                      {query.trim() !== '' && filtered.length > 0 && (
-                        <div className="panel divide-y divide-[hsl(var(--frost))] max-h-60 overflow-y-auto" role="group" aria-label="Crew names">
-                          {filtered.map(d => (
-                            <button
-                              key={d.crew_id}
-                              type="button"
-                              className="checkrow w-full text-left"
-                              onClick={() => { setCrewId(d.crew_id); setQuery('') }}
-                            >
-                              <span className="font-medium">{d.name}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  )}
-                  <button className="btn-ghost w-full" onClick={() => { setNewMode(true); setCrewId(null) }}>
-                    I'm new to the team
-                  </button>
-                </>
-              ) : (
-                <div className="panel p-4 space-y-3">
-                  <input
-                    className="input"
-                    placeholder="Your full name"
-                    value={newName}
-                    onChange={e => setNewName(e.target.value)}
-                    aria-label="Your full name"
-                  />
-                  <p className="text-xs" style={{ color: 'hsl(var(--slate))' }}>
-                    New crew are reviewed by the team before appearing on the public list.
-                  </p>
-                  <button className="btn-ghost w-full" onClick={() => setNewMode(false)}>
-                    Back to the crew list
-                  </button>
-                </div>
-              )}
-            </section>
-
-            {/* Step 2 — races */}
-            <section className="space-y-2">
-              <h2 className="eyebrow">2 · Races you can do</h2>
-              {races.length === 0 && <Empty title="No upcoming races" hint="Check back soon." />}
-              {groupByMonth(races).map(([month, rs]) => (
-                <div key={month}>
-                  <h3 className="month-sep">{month}</h3>
-                  <div className="divide-y divide-[hsl(var(--frost))]">
-                    {rs.map(r => r.signup_closed ? (
-                      <div key={r.race_id} className="checkrow" style={{ opacity: 0.55, cursor: 'default' }}>
-                        <DateBlock iso={r.race_date} />
-                        <div className="font-medium leading-snug flex-1 min-w-0">
-                          <span>{r.race_name}</span>
-                          <RaceMeta startTime={r.start_time} location={r.location} />
-                        </div>
-                        <span className="chip" aria-label="Sign-ups closed for this race">Closed</span>
+          <div className="cl-signup-form">
+            <section className="cl-signup-section" aria-label="Your name">
+              <div className="cl-panel cl-signup-name-panel">
+                {!newMode ? (
+                  <>
+                    {crewId ? (
+                      <div className="cl-selected-name">
+                        <span className="cl-selected-name__check" aria-hidden="true">
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                        </span>
+                        <strong>{selectedName}</strong>
+                        <ClButton variant="text" size="small" onClick={() => { setCrewId(null); setQuery('') }} aria-label="Change name">Change</ClButton>
                       </div>
                     ) : (
-                      <label key={r.race_id} className="checkrow">
-                        <input
-                          type="checkbox"
-                          className="check"
-                          checked={picked.has(r.race_id)}
-                          onChange={() => toggle(r.race_id)}
-                        />
-                        <DateBlock iso={r.race_date} />
-                        <div className="font-medium leading-snug flex-1 min-w-0">
-                          <span>{r.race_name}</span>
-                          <RaceMeta startTime={r.start_time} location={r.location} />
-                        </div>
-                      </label>
-                    ))}
+                      <>
+                        <ClInput id="crew-name-search" label="Search your name" placeholder="Search your name…" value={query} onChange={e => setQuery(e.target.value)} autoComplete="off" />
+                        {query.trim() !== '' && filtered.length > 0 && (
+                          <div className="cl-directory" role="group" aria-label="Crew names">
+                            {filtered.map(d => (
+                              <button key={d.crew_id} type="button" onClick={() => { setCrewId(d.crew_id); setQuery('') }}>{d.name}</button>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                    <ClButton variant="secondary" full onClick={() => { setNewMode(true); setCrewId(null) }}>I'm new to the team</ClButton>
+                  </>
+                ) : (
+                  <div className="cl-new-crew">
+                    <ClInput
+                      id="new-crew-name"
+                      label="Your full name"
+                      placeholder="Your full name"
+                      hint="New crew are reviewed by the team before appearing on the public list."
+                      value={newName}
+                      onChange={e => setNewName(e.target.value)}
+                      autoComplete="name"
+                    />
+                    <ClButton variant="secondary" full onClick={() => setNewMode(false)}>Back to the crew list</ClButton>
                   </div>
-                </div>
-              ))}
+                )}
+              </div>
             </section>
 
-            {/* Floating submit bar */}
-            <FloatingBar>
-              {formErr && (
-                <p className="panel px-3 py-2 text-sm font-medium" role="alert" style={{ color: 'hsl(var(--destructive))' }}>
-                  {formErr}
-                </p>
-              )}
-              <button
-                className="btn-primary w-full"
-                onClick={beginReview}
-                style={{ boxShadow: '0 10px 24px hsl(var(--royal) / 0.35)' }}
-              >
-                {picked.size > 0 ? `Review ${picked.size} race${picked.size > 1 ? 's' : ''}` : 'Review sign-up'}
-              </button>
-            </FloatingBar>
-          </>
+            <section className="cl-signup-section" aria-label="Races you can do">
+              {races.length === 0 && <div className="cl-panel"><ClEmpty title="No upcoming races" hint="Check back soon." /></div>}
+              <div className="cl-signup-months">
+                {groupByMonth(races).map(([month, rs]) => (
+                  <section key={month} className="cl-signup-month" aria-label={month}>
+                    <h3>{month}</h3>
+                    <div className="cl-panel cl-signup-races">
+                      {rs.map(r => r.signup_closed ? (
+                        <div key={r.race_id} className="cl-signup-race cl-signup-race--closed">
+                          <SignupDate iso={r.race_date} />
+                          <RaceContent race={r} />
+                          <ClStatus tone="neutral" label="Sign-ups closed for this race">Closed</ClStatus>
+                        </div>
+                      ) : (
+                        <label key={r.race_id} className={`cl-signup-race cl-signup-race--open${picked.has(r.race_id) ? ' cl-signup-race--picked' : ''}`}>
+                          <input type="checkbox" checked={picked.has(r.race_id)} onChange={() => toggle(r.race_id)} />
+                          <SignupDate iso={r.race_date} />
+                          <RaceContent race={r} />
+                        </label>
+                      ))}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            </section>
+          </div>
         )}
       </main>
+
+      {!err && signupOpen === true && dir && races && (
+        <SignupActionBar>
+          {formErr && <ClNotice tone="error" title="Check your sign-up">{formErr}</ClNotice>}
+          <div className="cl-signup-review-action">
+            <ClButton onClick={beginReview}>{picked.size > 0 ? `Review ${picked.size} race${picked.size > 1 ? 's' : ''}` : 'Review sign-up'}</ClButton>
+          </div>
+        </SignupActionBar>
+      )}
     </div>
   )
 }

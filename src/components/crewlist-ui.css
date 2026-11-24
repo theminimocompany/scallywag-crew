@@ -363,3 +363,62 @@
   .cl-schedule-race h3 { font-size: 15px; }
   .cl-crew-list { gap: 6px; }
 }
+
+/* Step 2B public signup. Submission success and global closed states remain Step 2C. */
+.cl-public-signup { background: var(--cl-page); }
+.cl-signup-main, .cl-review-main { max-width: 960px; padding-top: 52px; padding-bottom: 176px; }
+.cl-signup-main .cl-page-header h1, .cl-review-main .cl-page-header h1 { font-size: clamp(36px, 4vw, 48px); }
+.cl-signup-preview-notice { margin-top: 24px; }
+.cl-signup-state { margin-top: 24px; }
+.cl-signup-form { display: grid; grid-template-columns: minmax(250px, 0.72fr) minmax(0, 1.28fr); align-items: start; gap: 24px; margin-top: 32px; }
+.cl-signup-section { min-width: 0; }
+.cl-signup-section__heading { margin: 0 0 12px; color: var(--cl-slate); font-family: var(--cl-font-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; }
+.cl-signup-name-panel { display: grid; gap: 16px; padding: 18px; }
+.cl-selected-name { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.cl-selected-name > strong { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.cl-selected-name__check { display: grid; place-content: center; flex: none; width: 32px; height: 32px; border-radius: 50%; background: var(--cl-accent-soft); color: var(--cl-accent); }
+.cl-directory { display: grid; max-height: 240px; overflow-y: auto; border: 1px solid var(--cl-line); border-radius: var(--cl-radius-control); }
+.cl-directory > button { min-height: 44px; padding: 10px 12px; border: 0; background: var(--cl-surface); color: var(--cl-ink); text-align: left; }
+.cl-directory > button:hover { background: var(--cl-accent-soft); color: var(--cl-accent-hover); }
+.cl-new-crew { display: grid; gap: 16px; }
+.cl-signup-months { display: grid; gap: 28px; }
+.cl-signup-month > h3 { margin: 0 0 12px; color: var(--cl-slate); font-family: var(--cl-font-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; }
+.cl-signup-races { overflow: hidden; }
+.cl-signup-race { display: grid; align-items: center; gap: 16px; min-height: 96px; padding: 16px 18px; }
+.cl-signup-race--open { grid-template-columns: 20px 46px minmax(0, 1fr); cursor: pointer; transition: background-color 150ms var(--cl-ease); }
+.cl-signup-race--open:hover { background: #f5f9ff; }
+.cl-signup-race--picked, .cl-signup-race--picked:hover { background: var(--cl-accent-soft); }
+.cl-signup-race--open > input { width: 18px; height: 18px; margin: 0; accent-color: var(--cl-accent); cursor: pointer; }
+.cl-signup-race--closed { grid-template-columns: 46px minmax(0, 1fr) auto; opacity: 0.6; }
+.cl-signup-race__content { min-width: 0; }
+.cl-signup-race__name { display: block; font-size: 15px; font-weight: 600; line-height: 1.4; letter-spacing: -0.015em; overflow-wrap: anywhere; }
+.cl-signup-action { position: fixed; right: 0; bottom: 0; left: 0; z-index: 40; padding-top: 30px; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); background: linear-gradient(to top, var(--cl-page) 65%, rgb(247 250 255 / 0)); pointer-events: none; }
+.cl-signup-action__inner { display: grid; gap: 10px; max-width: 960px; pointer-events: auto; }
+.cl-signup-review-action { display: flex; justify-content: flex-end; }
+.cl-signup-review-action > .cl-button { min-width: 220px; }
+.cl-review-main { max-width: 800px; }
+.cl-review-grid { display: grid; gap: 28px; margin-top: 36px; }
+.cl-review-name { margin: 0 0 6px; font-size: 18px; font-weight: 600; }
+.cl-review-races { overflow: hidden; }
+.cl-review-race { display: grid; grid-template-columns: 46px minmax(0, 1fr); align-items: center; gap: 18px; min-height: 88px; padding: 16px 20px; }
+.cl-review-actions { display: flex; justify-content: flex-end; gap: 10px; }
+
+@media (max-width: 800px) {
+  .cl-signup-form { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .cl-signup-main, .cl-review-main { padding-top: 36px; padding-bottom: 190px; }
+  .cl-signup-form { gap: 28px; margin-top: 28px; }
+  .cl-signup-months { gap: 24px; }
+  .cl-signup-race { gap: 12px; padding: 16px 14px; }
+  .cl-signup-race--open { grid-template-columns: 20px 38px minmax(0, 1fr); }
+  .cl-signup-race--closed { grid-template-columns: 38px minmax(0, 1fr); align-items: start; }
+  .cl-signup-race--closed > .cl-status { grid-column: 2; }
+  .cl-signup-race .cl-schedule-date strong, .cl-review-race .cl-schedule-date strong { font-size: 21px; }
+  .cl-signup-review-action > .cl-button { width: 100%; }
+  .cl-review-grid { margin-top: 28px; }
+  .cl-review-race { grid-template-columns: 38px minmax(0, 1fr); gap: 14px; padding-inline: 16px; }
+  .cl-review-actions { flex-direction: column-reverse; }
+  .cl-review-actions > .cl-button { width: 100%; }
+}

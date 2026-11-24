@@ -89,11 +89,13 @@ export function ClInput({ id, label, hint, error, optional = false, className, .
 export function ClStatus({
   tone = 'neutral',
   children,
+  label,
 }: {
   tone?: 'neutral' | 'open' | 'selected' | 'warning' | 'danger'
   children: ReactNode
+  label?: string
 }) {
-  return <span className={classes('cl-status', `cl-status--${tone}`)}><span aria-hidden="true" />{children}</span>
+  return <span className={classes('cl-status', `cl-status--${tone}`)} aria-label={label}><span aria-hidden="true" />{children}</span>
 }
 
 export function ClNotice({
