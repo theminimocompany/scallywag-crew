@@ -233,7 +233,7 @@ export default function DesignFoundation() {
             </div>
             <div className="cl-type-specimen__data">
               <span>START / HKT</span>
-              <strong>09:05:00</strong>
+              <strong>09:05</strong>
               <p>24-hour times and tabular numerals stay aligned across schedule, signup and admin views.</p>
             </div>
           </div>
