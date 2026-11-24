@@ -318,3 +318,48 @@
 @media (prefers-reduced-motion: reduce) {
   .cl-root *, .cl-root *::before, .cl-root *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+
+/* Step 2A public schedule. Live behaviour stays unchanged until deployment approval. */
+.cl-public-schedule { background: var(--cl-page); }
+.cl-public-header { position: sticky; top: 0; z-index: 20; border-bottom: 1px solid var(--cl-line); background: rgb(255 255 255 / 0.96); backdrop-filter: blur(12px); }
+.cl-public-header__inner { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 68px; }
+.cl-public-brand { min-height: 44px; padding: 0; border: 0; background: transparent; color: var(--cl-ink); text-align: left; }
+.cl-public-brand .cl-team-brand { font-size: 18px; }
+.cl-schedule-main { max-width: 960px; padding-top: 52px; padding-bottom: 72px; }
+.cl-schedule-main .cl-page-header h1 { font-size: clamp(36px, 4vw, 48px); }
+.cl-schedule-preview-notice { margin-top: 24px; }
+.cl-public-tabs { display: flex; gap: 28px; margin-top: 36px; overflow-x: auto; }
+.cl-public-tab { position: relative; flex: none; min-height: 48px; padding: 0; border: 0; background: transparent; color: var(--cl-slate); font-size: 14px; font-weight: 600; }
+.cl-public-tab::after { content: ''; position: absolute; inset: auto 0 -1px; height: 2px; background: transparent; }
+.cl-public-tab:hover { color: var(--cl-accent); }
+.cl-public-tab--active { color: var(--cl-accent); }
+.cl-public-tab--active::after { background: var(--cl-accent); }
+.cl-public-tabs + .cl-notice, .cl-public-tabs + .cl-panel { margin-top: 8px; }
+.cl-schedule-months { display: grid; gap: 32px; }
+.cl-schedule-month:first-child { margin-top: 8px; }
+.cl-schedule-month > h2 { margin: 0 0 12px; color: var(--cl-slate); font-family: var(--cl-font-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; }
+.cl-schedule-panel { overflow: hidden; }
+.cl-schedule-row { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; align-items: center; gap: 20px; min-height: 112px; padding: 20px 22px; }
+.cl-schedule-date { display: grid; justify-items: center; align-content: center; min-height: 52px; font-family: var(--cl-font-mono); font-variant-numeric: tabular-nums; }
+.cl-schedule-date strong { font-size: 23px; line-height: 1.05; font-weight: 500; }
+.cl-schedule-date span { margin-top: 5px; color: var(--cl-muted); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; }
+.cl-schedule-race { min-width: 0; }
+.cl-schedule-race h3 { margin: 0; font-size: 16px; line-height: 1.4; letter-spacing: -0.015em; }
+.cl-schedule-meta { margin: 5px 0 0; color: var(--cl-slate); font-size: 13px; line-height: 1.55; overflow-wrap: anywhere; }
+.cl-crew-list { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+.cl-crew-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 3px 9px; border: 1px solid #b9d4fa; border-radius: 999px; background: var(--cl-accent-soft); color: var(--cl-accent-hover); font-size: 12px; font-weight: 600; }
+.cl-crew-chip > span { width: 5px; height: 5px; border-radius: 50%; background: var(--cl-accent); }
+.cl-schedule-pending { margin: 10px 0 0; color: var(--cl-slate); font-size: 13px; line-height: 1.55; }
+.cl-schedule-row > .cl-status { align-self: start; margin-top: 2px; }
+
+@media (max-width: 640px) {
+  .cl-public-header__inner { min-height: 64px; gap: 16px; }
+  .cl-public-brand .cl-team-brand { font-size: 16px; }
+  .cl-schedule-main { padding-top: 36px; padding-bottom: 48px; }
+  .cl-public-tabs { margin-top: 28px; }
+  .cl-schedule-months { gap: 28px; }
+  .cl-schedule-row { grid-template-columns: 40px minmax(0, 1fr); align-items: start; gap: 14px; min-height: 0; padding: 18px 16px; }
+  .cl-schedule-row > .cl-status { grid-column: 2; margin-top: -2px; }
+  .cl-schedule-race h3 { font-size: 15px; }
+  .cl-crew-list { gap: 6px; }
+}

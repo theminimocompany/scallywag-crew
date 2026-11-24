@@ -169,7 +169,8 @@ export default function App() {
   if (seg[0] === 'forgot-password') return <ForgotPassword />
   if (seg[0] === 'reset-password') return <ResetPassword session={session} authReady={authReady} />
 
-  // Isolated design-system preview; the production root remains Scallywag.
+  // Isolated design previews; the production root remains Scallywag.
+  if (seg[0] === 'mockups' && seg[1] === 'schedule') return <PublicSchedule preview />
   if (seg[0] === 'mockups') return <DesignFoundation />
 
   // ---- Crewlist console (super admin) ----
