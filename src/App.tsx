@@ -19,8 +19,8 @@ import ConsoleTeamDetail from '@/pages/ConsoleTeamDetail'
 import Join, { type JoinPreview } from '@/pages/Join'
 import AccountHome, { type AccountHomePreview } from '@/pages/AccountHome'
 import Onboard, { type OnboardPreview } from '@/pages/Onboard'
-import AcceptInvite from '@/pages/AcceptInvite'
-import InviteAuth from '@/pages/InviteAuth'
+import AcceptInvite, { type AcceptInvitePreview } from '@/pages/AcceptInvite'
+import InviteAuth, { type InviteAuthPreview } from '@/pages/InviteAuth'
 import ForgotPassword from '@/pages/ForgotPassword'
 import ResetPassword from '@/pages/ResetPassword'
 import DesignFoundation from '@/pages/DesignFoundation'
@@ -218,6 +218,31 @@ export default function App() {
       ]
       const preview = allowed.includes(state as OnboardPreview) ? state as OnboardPreview : 'team'
       return <Onboard key={`wizard-${preview}`} email="alex@example.com" preview={preview} />
+    }
+  }
+  if (seg[0] === 'mockups' && seg[1] === 'invitations') {
+    const page = seg[2] ?? 'auth'
+    const state = seg[3] ?? 'setup'
+    if (page === 'auth') {
+      const allowed: InviteAuthPreview[] = [
+        'loading', 'invalid', 'setup', 'signin', 'notice', 'validation',
+        'setup-loading', 'setup-error', 'existing-account', 'sent', 'signin-loading', 'signin-error',
+      ]
+      const preview = allowed.includes(state as InviteAuthPreview) ? state as InviteAuthPreview : 'setup'
+      return <InviteAuth key={`invite-auth-${preview}`} token="11111111-1111-4111-8111-111111111111" preview={preview} />
+    }
+    if (page === 'accept') {
+      const allowed: AcceptInvitePreview[] = ['accepting', 'success', 'error', 'incomplete']
+      const preview = allowed.includes(state as AcceptInvitePreview) ? state as AcceptInvitePreview : 'accepting'
+      return (
+        <AcceptInvite
+          key={`invite-accept-${preview}`}
+          token={preview === 'incomplete' ? '' : '11111111-1111-4111-8111-111111111111'}
+          email="invited.admin@testing101.invalid"
+          onSignOut={async () => {}}
+          preview={preview}
+        />
+      )
     }
   }
   if (seg[0] === 'mockups' && seg[1] === 'signup' && seg[2] === 'closed') {

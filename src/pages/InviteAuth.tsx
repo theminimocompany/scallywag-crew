@@ -2,27 +2,57 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { navigate } from '@/lib/hash'
 import { fetchInviteEmail } from '@/lib/api'
-import { Spinner, ErrText } from '@/components/bits'
+import { ClAuthShell, ClButton, ClInput, ClNotice } from '@/components/CrewlistUI'
+
+export type InviteAuthPreview =
+  | 'loading'
+  | 'invalid'
+  | 'setup'
+  | 'signin'
+  | 'notice'
+  | 'validation'
+  | 'setup-loading'
+  | 'setup-error'
+  | 'existing-account'
+  | 'sent'
+  | 'signin-loading'
+  | 'signin-error'
+
+const PREVIEW_EMAIL = 'invited.admin@testing101.invalid'
+const CALLBACK_NOTICE = 'We couldn’t sign you in automatically. If your email is already confirmed, sign in with your password to continue.'
+const EXISTING_ACCOUNT_ERROR = 'This email already has an account. Sign in, or use “Set your password” if you have never created one.'
 
 /** Password-only account setup and sign-in for a co-admin invitation. */
-export default function InviteAuth({ token }: { token: string }) {
+export default function InviteAuth({ token, preview }: { token: string; preview?: InviteAuthPreview }) {
   const [notice] = useState(() => {
+    if (preview) return preview === 'notice' ? CALLBACK_NOTICE : null
     const message = sessionStorage.getItem('crewlist_invite_notice')
     sessionStorage.removeItem('crewlist_invite_notice')
     return message
   })
-  const [mode, setMode] = useState<'setup' | 'signin'>(notice ? 'signin' : 'setup')
-  const [fullName, setFullName] = useState('')
-  const [invitedEmail, setInvitedEmail] = useState<string | null>(null)
-  const [lookupState, setLookupState] = useState<'loading' | 'ready' | 'error'>('loading')
-  const [password, setPassword] = useState('')
-  const [confirmation, setConfirmation] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [err, setErr] = useState<string | null>(null)
-  const [sent, setSent] = useState(false)
+  const previewSignIn = preview === 'signin' || preview === 'notice' || preview === 'existing-account'
+    || preview === 'signin-loading' || preview === 'signin-error'
+  const [mode, setMode] = useState<'setup' | 'signin'>(notice || previewSignIn ? 'signin' : 'setup')
+  const [fullName, setFullName] = useState(preview ? 'Alex Morgan' : '')
+  const [invitedEmail, setInvitedEmail] = useState<string | null>(preview ? PREVIEW_EMAIL : null)
+  const [lookupState, setLookupState] = useState<'loading' | 'ready' | 'error'>(
+    preview === 'loading' ? 'loading' : preview === 'invalid' ? 'error' : preview ? 'ready' : 'loading',
+  )
+  const [password, setPassword] = useState(preview ? 'synthetic-password' : '')
+  const [confirmation, setConfirmation] = useState(preview === 'validation' ? 'different-password' : preview ? 'synthetic-password' : '')
+  const [busy, setBusy] = useState(preview === 'setup-loading' || preview === 'signin-loading')
+  const [err, setErr] = useState<string | null>(
+    preview === 'validation' ? 'The two passwords do not match.'
+      : preview === 'setup-error' ? 'We couldn’t create your account. Try again shortly.'
+        : preview === 'existing-account' ? EXISTING_ACCOUNT_ERROR
+          : preview === 'signin-error' ? 'Invalid login credentials.' : null,
+  )
+  const [sent, setSent] = useState(preview === 'sent')
+  const [previewAction, setPreviewAction] = useState('Synthetic invitation details. Token lookup, Auth requests, recovery storage and navigation are disabled in this preview.')
   const email = invitedEmail ?? ''
 
   useEffect(() => {
+    if (preview) return
     let cancelled = false
     fetchInviteEmail(token)
       .then(inviteEmail => {
@@ -36,7 +66,7 @@ export default function InviteAuth({ token }: { token: string }) {
       })
       .catch(() => { if (!cancelled) setLookupState('error') })
     return () => { cancelled = true }
-  }, [token])
+  }, [token, preview])
 
   function switchMode(next: 'setup' | 'signin') {
     setMode(next)
@@ -54,6 +84,12 @@ export default function InviteAuth({ token }: { token: string }) {
     if (password.length < 8) return setErr('Use at least 8 characters for your password.')
     if (password !== confirmation) return setErr('The two passwords do not match.')
 
+    if (preview) {
+      setSent(true)
+      setPreviewAction('The confirmation state was reached locally. No account was created, no email was sent and no invitation was redeemed.')
+      return
+    }
+
     setBusy(true)
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -70,7 +106,7 @@ export default function InviteAuth({ token }: { token: string }) {
       setMode('signin')
       setPassword('')
       setConfirmation('')
-      return setErr('This email already has an account. Sign in, or use “Set your password” if you have never created one.')
+      return setErr(EXISTING_ACCOUNT_ERROR)
     }
 
     // With email confirmation enabled there is no session yet. The invitation
@@ -80,6 +116,11 @@ export default function InviteAuth({ token }: { token: string }) {
 
   async function signIn(e: React.FormEvent) {
     e.preventDefault()
+    if (preview) {
+      setErr(null)
+      setPreviewAction('Sign-in was simulated locally. No Auth session was created and the invitation was not redeemed. Acceptance is previewed separately.')
+      return
+    }
     setBusy(true)
     setErr(null)
     const { error } = await supabase.auth.signInWithPassword({ email, password })
@@ -88,6 +129,10 @@ export default function InviteAuth({ token }: { token: string }) {
   }
 
   function setPasswordInstead() {
+    if (preview) {
+      setPreviewAction('Password recovery is disabled in this isolated preview. No return, email or invitation storage was changed.')
+      return
+    }
     sessionStorage.setItem('crewlist_auth_return', window.location.hash)
     sessionStorage.setItem('crewlist_recovery_email', email)
     sessionStorage.setItem('crewlist_recovery_invite', token)
@@ -95,131 +140,127 @@ export default function InviteAuth({ token }: { token: string }) {
   }
 
   return (
-    <div className="min-h-100dvh flex flex-col">
-      <header className="hairline-b">
-        <div className="page flex items-center" style={{ minHeight: 56 }}>
-          <span className="wordmark" style={{ textTransform: 'none' }}>Crewlist.</span>
+    <ClAuthShell preview={preview ? previewAction : undefined} previewTitle="Step 3C preview">
+      {lookupState === 'loading' ? (
+        <div className="cl-auth-loading" role="status">
+          <span className="cl-auth-spinner" aria-hidden="true" />
+          <h1>Checking your invitation</h1>
+          <p>One moment while we validate this co-admin link.</p>
         </div>
-      </header>
+      ) : lookupState === 'error' ? (
+        <div className="cl-auth-stack">
+          <div className="cl-auth-heading">
+            <p className="cl-eyebrow">CO-ADMIN INVITATION</p>
+            <h1>This invitation isn’t available</h1>
+            <p>The link may be invalid, revoked or expired.</p>
+          </div>
+          <ClNotice tone="warning" title="Ask for a fresh invitation">
+            The team admin can send you a new link. For security, an unavailable invitation cannot be used to set up or sign in to an account.
+          </ClNotice>
+        </div>
+      ) : sent ? (
+        <div className="cl-auth-stack" aria-live="polite">
+          <div className="cl-auth-heading">
+            <p className="cl-eyebrow">CO-ADMIN ACCOUNT</p>
+            <h1>Confirm your email</h1>
+            <p>One more step before you can accept your team access.</p>
+          </div>
+          <ClNotice tone="success" title="Check your inbox">
+            We sent a confirmation link to <span className="cl-auth-email">{email}</span>. Open it to return to this invitation automatically and accept your team access. If you don’t see it, check your spam or junk folder.
+          </ClNotice>
+          <ClButton variant="secondary" full onClick={() => {
+            setSent(false)
+            if (preview) setPreviewAction('The account setup form is editable again. No Auth request or invitation write was made.')
+          }}>
+            Back to account setup
+          </ClButton>
+        </div>
+      ) : (
+        <>
+          <div className="cl-auth-heading">
+            <p className="cl-eyebrow">CO-ADMIN INVITATION</p>
+            <h1>{mode === 'setup' ? 'Set up your account' : 'Sign in to accept your invite'}</h1>
+            <p>
+              {mode === 'setup'
+                ? 'Create your Crewlist login and confirm your email. You’ll return to this invitation automatically.'
+                : 'Sign in with the email address fixed by this invitation.'}
+            </p>
+          </div>
 
-      <main className="page flex-1 py-10 fade-in">
-        <div className="panel p-6 space-y-5">
-          {lookupState === 'loading' ? (
-            <div className="py-8 grid place-content-center"><Spinner label="Checking your invitation…" /></div>
-          ) : lookupState === 'error' ? (
-            <div className="space-y-4">
-              <div>
-                <div className="eyebrow">Co-admin invitation</div>
-                <h1 className="font-semibold" style={{ fontSize: 24 }}>This invitation isn’t available</h1>
-              </div>
-              <ErrText>Ask the team admin for a fresh invitation link. The link may be invalid, revoked or expired.</ErrText>
+          <form onSubmit={mode === 'setup' ? createAccount : signIn} className="cl-auth-form">
+            {notice && <ClNotice tone="info" title="Continue with your password">{notice}</ClNotice>}
+            {mode === 'setup' && (
+              <ClInput
+                id="invite-name"
+                label="Your name"
+                required
+                autoComplete="name"
+                placeholder="Your full name"
+                value={fullName}
+                onChange={e => setFullName(e.target.value)}
+              />
+            )}
+            <ClInput
+              id="invite-email"
+              label="Invited email"
+              type="email"
+              required
+              readOnly
+              autoComplete="email"
+              aria-readonly="true"
+              hint="This address is fixed by your invitation and cannot be changed here."
+              value={email}
+            />
+            <ClInput
+              id="invite-password"
+              label={mode === 'setup' ? 'Create a password' : 'Password'}
+              type="password"
+              required
+              minLength={mode === 'setup' ? 8 : undefined}
+              autoComplete={mode === 'setup' ? 'new-password' : 'current-password'}
+              placeholder={mode === 'setup' ? 'At least 8 characters' : 'Your password'}
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+            />
+            {mode === 'setup' && (
+              <ClInput
+                id="invite-confirmation"
+                label="Confirm password"
+                type="password"
+                required
+                minLength={8}
+                autoComplete="new-password"
+                placeholder="Repeat your password"
+                value={confirmation}
+                onChange={e => setConfirmation(e.target.value)}
+              />
+            )}
+
+            {err && <ClNotice tone="error" title="Check your invitation details">{err}</ClNotice>}
+            <ClButton full loading={busy} type="submit">
+              {busy
+                ? mode === 'setup' ? 'Creating account…' : 'Signing in…'
+                : mode === 'setup' ? 'Create account' : 'Sign in and accept invite'}
+            </ClButton>
+          </form>
+
+          {mode === 'signin' && (
+            <div className="cl-auth-form__meta">
+              <ClButton variant="text" type="button" onClick={setPasswordInstead}>
+                Forgot password or need to set your first one?
+              </ClButton>
             </div>
-          ) : sent ? (
-            <div className="space-y-4" aria-live="polite">
-              <div>
-                <div className="eyebrow">Co-admin account</div>
-                <h1 className="font-semibold" style={{ fontSize: 24 }}>Confirm your email</h1>
-              </div>
-              <p className="text-sm" style={{ color: 'hsl(var(--slate))' }}>
-                We sent a confirmation link to <span className="font-medium" style={{ color: 'hsl(var(--ink))' }}>{email}</span>.
-                Open it to return to this invitation automatically and accept your team access.
-                If you don’t see it, check your spam or junk folder.
-              </p>
-              <button className="btn-ghost w-full" onClick={() => setSent(false)}>
-                Back to account setup
-              </button>
-            </div>
-          ) : (
-            <>
-              <div>
-                <div className="eyebrow">Co-admin invitation</div>
-                <h1 className="font-semibold" style={{ fontSize: 24 }}>
-                  {mode === 'setup' ? 'Set up your account' : 'Sign in to accept your invite'}
-                </h1>
-                <p className="text-sm mt-1" style={{ color: 'hsl(var(--slate))' }}>
-                  {mode === 'setup'
-                    ? 'Create your Crewlist login and confirm your email. You’ll return to this invitation automatically.'
-                    : 'Sign in with the email address fixed by this invitation.'}
-                </p>
-              </div>
-
-              {notice && <p className="text-sm" role="status" style={{ color: 'hsl(var(--slate))' }}>{notice}</p>}
-
-              <form onSubmit={mode === 'setup' ? createAccount : signIn} className="space-y-3">
-                {mode === 'setup' && (
-                  <div>
-                    <label htmlFor="invite-name" className="text-xs font-medium block mb-1">Your name</label>
-                    <input
-                      id="invite-name" className="input" required autoComplete="name"
-                      value={fullName} onChange={e => setFullName(e.target.value)}
-                    />
-                  </div>
-                )}
-                <div>
-                  <label htmlFor="invite-email" className="text-xs font-medium block mb-1">Invited email</label>
-                  <input
-                    id="invite-email" className="input" type="email" required readOnly
-                    autoComplete="email" aria-readonly="true"
-                    value={email}
-                  />
-                  <p className="text-xs mt-1" style={{ color: 'hsl(var(--slate))' }}>
-                    This address is fixed by your invitation and cannot be changed here.
-                  </p>
-                </div>
-                <div>
-                  <label htmlFor="invite-password" className="text-xs font-medium block mb-1">
-                    {mode === 'setup' ? 'Create a password' : 'Password'}
-                  </label>
-                  <input
-                    id="invite-password" className="input" type="password" required
-                    minLength={mode === 'setup' ? 8 : undefined}
-                    autoComplete={mode === 'setup' ? 'new-password' : 'current-password'}
-                    placeholder={mode === 'setup' ? 'At least 8 characters' : undefined}
-                    value={password} onChange={e => setPassword(e.target.value)}
-                  />
-                </div>
-                {mode === 'setup' && (
-                  <div>
-                    <label htmlFor="invite-confirmation" className="text-xs font-medium block mb-1">Confirm password</label>
-                    <input
-                      id="invite-confirmation" className="input" type="password" required
-                      minLength={8} autoComplete="new-password"
-                      value={confirmation} onChange={e => setConfirmation(e.target.value)}
-                    />
-                  </div>
-                )}
-
-                {err && <p className="text-sm font-medium" role="alert" style={{ color: 'hsl(var(--destructive))' }}>{err}</p>}
-                <button className="btn-primary w-full" disabled={busy} type="submit">
-                  {busy
-                    ? 'Working…'
-                    : mode === 'setup' ? 'Create account →' : 'Sign in and accept invite →'}
-                </button>
-              </form>
-
-              {mode === 'signin' && (
-                <button
-                  type="button" className="text-xs font-medium cursor-pointer block w-full text-right"
-                  style={{ color: 'hsl(var(--royal))', minHeight: 44 }}
-                  onClick={setPasswordInstead}
-                >
-                  Forgot password or need to set your first one?
-                </button>
-              )}
-
-              <button
-                type="button" className="text-xs font-medium cursor-pointer"
-                style={{ color: 'hsl(var(--royal))', minHeight: 44 }}
-                onClick={() => switchMode(mode === 'setup' ? 'signin' : 'setup')}
-              >
-                {mode === 'setup'
-                  ? 'Already have a Crewlist account? Sign in'
-                  : 'New to Crewlist? Set up your account'}
-              </button>
-            </>
           )}
-        </div>
-      </main>
-    </div>
+
+          <div className="cl-auth-footer-action">
+            <ClButton variant="text" type="button" onClick={() => switchMode(mode === 'setup' ? 'signin' : 'setup')}>
+              {mode === 'setup'
+                ? 'Already have an account? Sign in'
+                : 'New to Crewlist? Set up your account'}
+            </ClButton>
+          </div>
+        </>
+      )}
+    </ClAuthShell>
   )
 }

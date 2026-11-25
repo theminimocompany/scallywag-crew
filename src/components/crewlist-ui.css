@@ -465,6 +465,11 @@
 .cl-auth-loading h1 { margin-top: 24px; }
 .cl-auth-spinner { width: 28px; height: 28px; border: 2px solid var(--cl-line-strong); border-top-color: var(--cl-accent); border-radius: 50%; animation: cl-spin 700ms linear infinite; }
 
+/* Step 3C co-admin invitation authentication and acceptance. */
+.cl-invite-progress { margin-top: 24px !important; font-family: var(--cl-font-mono); font-size: 12px !important; }
+.cl-invite-heading { margin-bottom: 0; }
+.cl-auth-loading p .cl-auth-email, .cl-auth-heading p .cl-auth-email { font-weight: 600; }
+
 @media (max-width: 640px) {
   .cl-auth-main { padding-top: 32px; padding-bottom: 48px; }
   .cl-auth-panel { padding: 24px 20px; }
