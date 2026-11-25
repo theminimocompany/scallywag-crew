@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { navigate } from '@/lib/hash'
-import { ErrText, Spinner } from '@/components/bits'
+import { ClAuthShell, ClButton, ClInput, ClNotice, ClStatus } from '@/components/CrewlistUI'
 import {
   getTenant, updateTeamName, fetchRaces, parseRhkycCsv,
   addRacesBulk, addCrewBulk, type Tenant, type CsvRace,
@@ -11,22 +11,80 @@ const SAMPLE_CSV = 'Subject,Start Date,Start Time,End Date,End Time,All Day Even
   'Waglan Series (Middle Island),22/11/2026,10:00,22/11/2026,17:00,False,,Middle Island,False\n' +
   'Rogue 2 (Harbour Start),06/12/2026,10:30,06/12/2026,16:00,False,,Harbour,False\n'
 
-export default function Onboard({ email }: { email: string }) {
-  const [step, setStep] = useState(1)
-  const [tenant, setTenant] = useState<Tenant | null>(null)
-  const [name, setName] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [err, setErr] = useState<string | null>(null)
-  const [csvRaces, setCsvRaces] = useState<CsvRace[] | null>(null)
-  const [fileName, setFileName] = useState('')
-  const [crewText, setCrewText] = useState('')
-  const [imported, setImported] = useState({ races: 0, crew: 0 })
+export type OnboardPreview =
+  | 'loading'
+  | 'error'
+  | 'team'
+  | 'team-loading'
+  | 'team-error'
+  | 'calendar'
+  | 'calendar-preview'
+  | 'calendar-empty'
+  | 'calendar-loading'
+  | 'calendar-error'
+  | 'crew'
+  | 'crew-ready'
+  | 'crew-loading'
+  | 'crew-error'
+  | 'live'
+  | 'live-imported'
+
+const PREVIEW_TENANT: Tenant = { id: 'synthetic-team', name: 'Sea Wolf', slug: 'sea-wolf', status: 'active' }
+const PREVIEW_RACES: CsvRace[] = [
+  { name: 'Frostbite 2 & 3 (Harbour)', date: '2026-11-14', startTime: '10:30', location: 'Harbour', duplicate: false, include: true },
+  { name: 'Waglan Series (Middle Island)', date: '2026-11-22', startTime: '10:00', location: 'Middle Island', duplicate: false, include: true },
+  { name: 'Rogue 2 (Harbour Start)', date: '2026-12-06', startTime: '10:30', location: 'Harbour', duplicate: true, include: false },
+]
+const PREVIEW_CREW = 'Marco Bellini\nSophie Delacroix\nTommy Ashford'
+
+function previewStep(preview?: OnboardPreview) {
+  if (preview?.startsWith('calendar')) return 2
+  if (preview?.startsWith('crew')) return 3
+  if (preview?.startsWith('live')) return 4
+  return 1
+}
+
+function previewError(preview?: OnboardPreview) {
+  if (preview === 'error') return 'We couldn’t load this team. Check your access and try again.'
+  if (preview?.endsWith('-error')) return 'The import couldn’t be completed. Nothing was added; try again.'
+  return null
+}
+
+export default function Onboard({ email, preview }: { email: string; preview?: OnboardPreview }) {
+  const [step, setStep] = useState(() => previewStep(preview))
+  const [tenant, setTenant] = useState<Tenant | null>(() => preview && preview !== 'loading' && preview !== 'error' ? PREVIEW_TENANT : null)
+  const [name, setName] = useState(preview && preview !== 'loading' && preview !== 'error' ? PREVIEW_TENANT.name : '')
+  const [busy, setBusy] = useState(!!preview?.endsWith('-loading'))
+  const [err, setErr] = useState<string | null>(() => previewError(preview))
+  const hasCsvPreview = preview === 'calendar-preview' || preview === 'calendar-loading' || preview === 'calendar-error'
+  const [csvRaces, setCsvRaces] = useState<CsvRace[] | null>(() => hasCsvPreview ? PREVIEW_RACES : preview === 'calendar-empty' ? [] : null)
+  const [fileName, setFileName] = useState(hasCsvPreview || preview === 'calendar-empty' ? 'rhkyc-calendar.csv' : '')
+  const [crewText, setCrewText] = useState(preview === 'crew-ready' || preview === 'crew-loading' || preview === 'crew-error' ? PREVIEW_CREW : '')
+  const [imported, setImported] = useState(preview === 'live-imported' ? { races: 2, crew: 3 } : { races: 0, crew: 0 })
   const [copied, setCopied] = useState(false)
+  const [previewNotice, setPreviewNotice] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
+  async function loadTenant() {
+    setErr(null)
+    if (preview) {
+      setTenant(PREVIEW_TENANT)
+      setName(PREVIEW_TENANT.name)
+      return
+    }
+    try {
+      const t = await getTenant()
+      setTenant(t)
+      setName(t.name)
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e))
+    }
+  }
+
   useEffect(() => {
+    if (preview) return
     getTenant().then(t => { setTenant(t); setName(t.name) }).catch(e => setErr(e?.message ?? String(e)))
-  }, [])
+  }, [preview])
 
   const crewNames = [...new Set(crewText.split('\n').map(s => s.trim()).filter(Boolean))]
   const racesToImport = (csvRaces ?? []).filter(r => r.include)
@@ -45,7 +103,7 @@ export default function Onboard({ email }: { email: string }) {
     setErr(null); setFileName(f.name)
     try {
       const text = await f.text()
-      const existing = await fetchRaces()
+      const existing = preview ? [] : await fetchRaces()
       setCsvRaces(parseRhkycCsv(text, existing))
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e))
@@ -53,162 +111,200 @@ export default function Onboard({ email }: { email: string }) {
   }
 
   async function run(fn: () => Promise<void>, next: number) {
-    setBusy(true); setErr(null)
-    try { await fn(); setStep(next) }
-    catch (e) { setErr(e instanceof Error ? e.message : String(e)) }
+    setBusy(true); setErr(null); setPreviewNotice(null)
+    try {
+      await fn()
+      setStep(next)
+      if (preview) setPreviewNotice('The step change was simulated locally. No team data was written.')
+    } catch (e) { setErr(e instanceof Error ? e.message : String(e)) }
     finally { setBusy(false) }
+  }
+
+  async function copyPublicLink() {
+    if (preview) {
+      setCopied(true)
+      setPreviewNotice('Copy link was simulated locally. Your clipboard is unchanged.')
+      return
+    }
+    try { await navigator.clipboard.writeText(publicLink); setCopied(true) }
+    catch { window.prompt('Copy your team link:', publicLink) }
   }
 
   const stepMeta = ['Team', 'Race calendar', 'Your crew', 'Live'][step - 1]
 
   return (
-    <div className="min-h-100dvh flex flex-col">
-      <header className="hairline-b">
-        <div className="page flex items-center justify-between" style={{ minHeight: 56 }}>
-          <span className="wordmark" style={{ textTransform: 'none' }}>Crewlist.</span>
-          <span className="text-xs" style={{ color: 'hsl(var(--slate))' }}>{tenant?.name ?? '…'} · {email}</span>
+    <ClAuthShell
+      wide
+      preview={preview ? `Synthetic ${preview.replaceAll('-', ' ')} state. No tenant lookup, import, or clipboard write will occur.` : undefined}
+      previewTitle="Step 3B preview"
+      action={(
+        <span className="cl-onboard-identity">
+          <strong>{tenant?.name ?? 'Crewlist team'}</strong>
+          <span>{email}</span>
+        </span>
+      )}
+    >
+      <div className="cl-onboard-progress" role="progressbar" aria-label="Team onboarding" aria-valuemin={1} aria-valuemax={4} aria-valuenow={step} aria-valuetext={`Step ${step} of 4: ${stepMeta}`}>
+        {[1, 2, 3, 4].map(i => <span key={i} className={i <= step ? 'cl-onboard-progress__done' : ''} />)}
+      </div>
+      <p className="cl-eyebrow cl-onboard-step">STEP {step} OF 4 · {stepMeta}</p>
+
+      {previewNotice && (
+        <div className="cl-onboard-preview-result">
+          <ClNotice tone="success" title="Preview only">{previewNotice}</ClNotice>
         </div>
-      </header>
+      )}
 
-      <main className="page flex-1 py-8 fade-in">
-        <div className="flex gap-2 mb-5" aria-hidden>
-          {[1, 2, 3, 4].map(i => (
-            <span key={i} style={{ height: 4, flex: 1, borderRadius: 999, background: i <= step ? 'hsl(var(--royal))' : 'hsl(var(--frost))' }} />
-          ))}
+      {!tenant && !err && (
+        <div className="cl-auth-loading">
+          <span className="cl-auth-spinner" aria-hidden="true" />
+          <h1>Loading your team…</h1>
+          <p>Getting the new workspace ready.</p>
         </div>
-        <p className="text-xs mb-1" style={{ color: 'hsl(var(--slate))' }}>Step {step} of 4 · {stepMeta}</p>
+      )}
+      {err && (
+        <div className="cl-onboard-error">
+          <ClNotice
+            tone="error"
+            title={tenant ? 'Something went wrong' : 'Team unavailable'}
+            action={!tenant ? <ClButton variant="secondary" size="small" onClick={() => void loadTenant()}>Try again</ClButton> : undefined}
+          >
+            {err}
+          </ClNotice>
+        </div>
+      )}
 
-        {!tenant && !err && <Spinner />}
-        {err && <div className="mb-4"><ErrText>{err}</ErrText></div>}
-
-        {tenant && step === 1 && (
-          <section className="space-y-4">
-            <h1 className="font-semibold" style={{ fontSize: 24 }}>Name your team</h1>
-            <p className="text-sm" style={{ color: 'hsl(var(--slate))' }}>
-              This name sits at the top of every page your crew sees.
-            </p>
-            <div>
-              <label htmlFor="team-name" className="text-xs uppercase font-medium block mb-1" style={{ letterSpacing: '0.08em', color: 'hsl(var(--slate))' }}>Team name</label>
-              <input id="team-name" className="input" value={name} maxLength={60} onChange={e => setName(e.target.value)} />
+      {tenant && step === 1 && (
+        <section>
+          <div className="cl-onboard-heading">
+            <h1>Name your team</h1>
+            <p>This name sits at the top of every page your crew sees.</p>
+          </div>
+          <form className="cl-auth-form" onSubmit={e => {
+            e.preventDefault()
+            void run(async () => { if (!preview && name.trim() !== tenant.name) await updateTeamName(name) }, 2)
+          }}>
+            <ClInput id="team-name" label="Team name" value={name} maxLength={60} required onChange={e => setName(e.target.value)} />
+            <div className="cl-team-link">
+              <p className="cl-label">Your team link</p>
+              <p className="cl-team-link__address">{publicLink}</p>
             </div>
-            <div className="panel p-3">
-              <p className="text-xs uppercase font-medium mb-1" style={{ letterSpacing: '0.08em', color: 'hsl(var(--slate))' }}>Your team link</p>
-              <p className="text-sm break-all font-medium">{publicLink}</p>
-            </div>
-            <button className="btn-primary w-full" disabled={busy || !name.trim()}
-              onClick={() => run(async () => { if (name.trim() !== tenant.name) await updateTeamName(name) }, 2)}>
-              Save & continue →
-            </button>
-          </section>
-        )}
+            <ClButton full type="submit" loading={busy} disabled={busy || !name.trim()}>Save & continue →</ClButton>
+          </form>
+        </section>
+      )}
 
-        {tenant && step === 2 && (
-          <section className="space-y-4">
-            <h1 className="font-semibold" style={{ fontSize: 24 }}>Import your races</h1>
-            <p className="text-sm" style={{ color: 'hsl(var(--slate))' }}>
-              Upload your club's CSV (e.g. the RHKYC export).{' '}
-              <button className="font-medium cursor-pointer" style={{ color: 'hsl(var(--royal))' }} onClick={downloadSample}>Download a sample CSV</button>{' '}
-              to see the format.
-            </p>
-            <button className="panel w-full p-8 text-center cursor-pointer" style={{ borderStyle: 'dashed' }} onClick={() => fileRef.current?.click()}>
-              <span className="text-sm font-medium">Tap to choose your CSV</span>
-              <span className="block text-xs mt-1" style={{ color: 'hsl(var(--slate))' }}>
-                {fileName ? `${fileName} · ${csvRaces?.length ?? 0} races found` : 'RHKYC Google Calendar export works out of the box'}
-              </span>
+      {tenant && step === 2 && (
+        <section>
+          <div className="cl-onboard-heading">
+            <h1>Import your races</h1>
+            <p>Upload your club’s CSV, such as the RHKYC export, or skip and add races one by one later.</p>
+          </div>
+          <div className="cl-auth-form">
+            <button type="button" className="cl-sample-link" onClick={downloadSample}>Download a sample CSV <span aria-hidden="true">↓</span></button>
+            <button type="button" className="cl-file-drop" onClick={() => fileRef.current?.click()}>
+              <span className="cl-file-drop__icon" aria-hidden="true">↑</span>
+              <strong>{fileName ? 'Choose a different CSV' : 'Choose your CSV'}</strong>
+              <span>{fileName ? `${fileName} · ${csvRaces?.length ?? 0} races found` : 'RHKYC Google Calendar export works out of the box'}</span>
             </button>
-            <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) onFile(f) }} />
+            <input ref={fileRef} type="file" accept=".csv,text/csv" className="cl-sr-only" aria-label="Race calendar CSV" onChange={e => { const f = e.target.files?.[0]; if (f) void onFile(f) }} />
 
             {csvRaces && csvRaces.length > 0 && (
               <>
-                <p className="text-xs uppercase font-medium" style={{ letterSpacing: '0.08em', color: 'hsl(var(--slate))' }}>
-                  Preview · first {Math.min(3, csvRaces.length)} of {csvRaces.length} races
-                </p>
-                <div className="panel divide-y divide-[hsl(var(--frost))]">
+                <div className="cl-import-summary">
+                  <p className="cl-eyebrow">PREVIEW · FIRST {Math.min(3, csvRaces.length)} OF {csvRaces.length} RACES</p>
+                  <ClStatus tone="selected">{racesToImport.length} to import</ClStatus>
+                </div>
+                <div className="cl-panel cl-import-races">
                   {csvRaces.slice(0, 3).map(r => (
-                    <div key={r.name + r.date} className="flex gap-4 p-3 text-sm">
-                      <span className="mono flex-none">{r.date}</span>
-                      <div className="min-w-0">
-                        <span>{r.name}{r.duplicate ? ' · already added' : ''}</span>
-                        {(r.startTime || r.location) && (
-                          <span className="block text-xs mt-0.5" style={{ color: 'hsl(var(--slate))' }}>
-                            {[r.startTime, r.location].filter(Boolean).join(' · ')}
-                          </span>
-                        )}
+                    <div key={r.name + r.date} className="cl-import-race">
+                      <span className="cl-mono cl-import-race__date">{r.date}</span>
+                      <div>
+                        <strong>{r.name}</strong>
+                        {(r.startTime || r.location) && <p>{[r.startTime, r.location].filter(Boolean).join(' · ')}</p>}
                       </div>
+                      {r.duplicate && <ClStatus>Already added</ClStatus>}
                     </div>
                   ))}
                 </div>
-                <button className="btn-primary w-full" disabled={busy || racesToImport.length === 0}
-                  onClick={() => run(async () => {
+                <ClButton full loading={busy} disabled={busy || racesToImport.length === 0} onClick={() => void run(async () => {
+                  if (!preview) {
                     await addRacesBulk(racesToImport.map(r => ({
                       name: r.name,
                       race_date: r.date,
                       start_time: r.startTime || null,
                       location: r.location.trim() || null,
                     })))
-                    setImported(v => ({ ...v, races: racesToImport.length }))
-                  }, 3)}>
+                  }
+                  setImported(v => ({ ...v, races: racesToImport.length }))
+                }, 3)}>
                   Import {racesToImport.length} races →
-                </button>
+                </ClButton>
               </>
             )}
             {csvRaces && csvRaces.length === 0 && (
-              <p className="text-sm" style={{ color: 'hsl(var(--slate))' }}>No races found in that file — check the format against the sample.</p>
+              <ClNotice tone="warning" title="No races found">Check the file format against the sample, or skip this step and add races later.</ClNotice>
             )}
-            <button className="w-full text-center text-sm font-medium cursor-pointer" style={{ minHeight: 44 }} onClick={() => setStep(3)}>
-              No CSV? Add races one by one later, or skip
-            </button>
-          </section>
-        )}
+            <ClButton variant="text" full onClick={() => setStep(3)}>No CSV? Add races one by one later, or skip</ClButton>
+          </div>
+        </section>
+      )}
 
-        {tenant && step === 3 && (
-          <section className="space-y-4">
-            <h1 className="font-semibold" style={{ fontSize: 24 }}>Add your crew names</h1>
-            <p className="text-sm" style={{ color: 'hsl(var(--slate))' }}>
-              Paste your roster, one name per line — straight from your WhatsApp group works fine.
-            </p>
-            <textarea className="input" style={{ minHeight: 220, resize: 'vertical' }} value={crewText}
-              placeholder={'Marco Bellini\nSophie Delacroix\nTommy Ashford'} onChange={e => setCrewText(e.target.value)} />
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-xs font-semibold" style={{ color: 'hsl(var(--royal))', border: '1px solid hsl(var(--royal))', borderRadius: 999, padding: '3px 10px' }}>
-                {crewNames.length} names recognised
-              </span>
-              <span className="text-xs" style={{ color: 'hsl(var(--slate))' }}>All approved automatically as your founding roster</span>
+      {tenant && step === 3 && (
+        <section>
+          <div className="cl-onboard-heading">
+            <h1>Add your crew names</h1>
+            <p>Paste your roster, one name per line — straight from your WhatsApp group works fine.</p>
+          </div>
+          <div className="cl-auth-form">
+            <div className="cl-field">
+              <label className="cl-label" htmlFor="crew-names">Crew roster</label>
+              <textarea id="crew-names" className="cl-input cl-crew-textarea" value={crewText}
+                placeholder={'Marco Bellini\nSophie Delacroix\nTommy Ashford'} onChange={e => setCrewText(e.target.value)} />
             </div>
-            <p className="text-xs" style={{ color: 'hsl(var(--slate))' }}>
-              Phones & emergency contacts are optional — add them later in Crew settings.
-            </p>
-            <button className="btn-primary w-full" disabled={busy || crewNames.length === 0}
-              onClick={() => run(async () => { await addCrewBulk(crewNames); setImported(v => ({ ...v, crew: crewNames.length })) }, 4)}>
+            <div className="cl-crew-summary">
+              <ClStatus tone="selected">{crewNames.length} names recognised</ClStatus>
+              <span>Approved automatically as your founding roster</span>
+            </div>
+            <p className="cl-onboard-note">Phones and emergency contacts are optional — add them later in Crew settings.</p>
+            <ClButton full loading={busy} disabled={busy || crewNames.length === 0} onClick={() => void run(async () => {
+              if (!preview) await addCrewBulk(crewNames)
+              setImported(v => ({ ...v, crew: crewNames.length }))
+            }, 4)}>
               Add {crewNames.length} crew →
-            </button>
-            <button className="w-full text-center text-sm font-medium cursor-pointer" style={{ minHeight: 44 }} onClick={() => setStep(4)}>
-              Skip — I'll add crew later
-            </button>
-          </section>
-        )}
+            </ClButton>
+            <ClButton variant="text" full onClick={() => setStep(4)}>Skip — I’ll add crew later</ClButton>
+          </div>
+        </section>
+      )}
 
-        {tenant && step === 4 && (
-          <section className="space-y-4">
-            <h1 className="font-semibold" style={{ fontSize: 24 }}>You're live</h1>
-            <p className="text-sm" style={{ color: 'hsl(var(--slate))' }}>
-              {tenant.name} is on Crewlist
-              {imported.races ? ` · ${imported.races} races` : ''}{imported.crew ? ` · ${imported.crew} crew` : ''}.
-              Share this link with your crew — they never need an account:
+      {tenant && step === 4 && (
+        <section>
+          <div className="cl-onboard-success-mark" aria-hidden="true">✓</div>
+          <div className="cl-onboard-heading">
+            <h1>You’re live</h1>
+            <p>
+              {tenant.name} is on Crewlist{imported.races ? ` · ${imported.races} races` : ''}{imported.crew ? ` · ${imported.crew} crew` : ''}.
+              Share this link with your crew — they never need an account.
             </p>
-            <div className="panel p-3">
-              <p className="text-sm break-all font-medium">{publicLink}</p>
-              <button className="btn-ghost w-full mt-2" onClick={async () => {
-                try { await navigator.clipboard.writeText(publicLink); setCopied(true) } catch { window.prompt('Copy your team link:', publicLink) }
-              }}>
-                {copied ? 'Copied ✓' : 'Copy link'}
-              </button>
+          </div>
+          <div className="cl-auth-form">
+            <div className="cl-team-link">
+              <p className="cl-label">Your public signup page</p>
+              <p className="cl-team-link__address">{publicLink}</p>
+              <ClButton variant="secondary" full onClick={() => void copyPublicLink()}>{copied ? 'Copied ✓' : 'Copy link'}</ClButton>
             </div>
-            <button className="btn-primary w-full" onClick={() => navigate(`/t/${tenant.slug}/admin`)}>Open team admin →</button>
-            <button className="btn-ghost w-full" onClick={() => navigate(`/t/${tenant.slug}/schedule`)}>View public page</button>
-          </section>
-        )}
-      </main>
-    </div>
+            <ClButton full onClick={() => {
+              if (preview) setPreviewNotice('Open team admin was simulated locally.')
+              else navigate(`/t/${tenant.slug}/admin`)
+            }}>Open team admin →</ClButton>
+            <ClButton variant="secondary" full onClick={() => {
+              if (preview) setPreviewNotice('View public page was simulated locally.')
+              else navigate(`/t/${tenant.slug}/schedule`)
+            }}>View public page</ClButton>
+          </div>
+        </section>
+      )}
+    </ClAuthShell>
   )
 }

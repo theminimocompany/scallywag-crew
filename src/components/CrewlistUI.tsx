@@ -30,30 +30,40 @@ export function ClAuthShell({
   onBrand,
   action,
   preview,
+  previewTitle = 'Step 3A preview',
+  wide = false,
 }: {
   children: ReactNode
   teamName?: string
-  onBrand: () => void
+  onBrand?: () => void
   action?: ReactNode
   preview?: string
+  previewTitle?: string
+  wide?: boolean
 }) {
   return (
-    <div className="cl-root cl-auth">
+    <div className={classes('cl-root', 'cl-auth', wide && 'cl-auth--wide')}>
       <header className="cl-public-header">
         <div className="cl-container cl-public-header__inner">
-          <button
-            type="button"
-            className="cl-public-brand"
-            onClick={onBrand}
-            aria-label={teamName ? `${teamName} home` : 'Crewlist home'}
-          >
-            {teamName ? <TeamBrand teamName={teamName} /> : <CrewlistBrand compact />}
-          </button>
+          {onBrand ? (
+            <button
+              type="button"
+              className="cl-public-brand"
+              onClick={onBrand}
+              aria-label={teamName ? `${teamName} home` : 'Crewlist home'}
+            >
+              {teamName ? <TeamBrand teamName={teamName} /> : <CrewlistBrand compact />}
+            </button>
+          ) : (
+            <span className="cl-public-brand">
+              {teamName ? <TeamBrand teamName={teamName} /> : <CrewlistBrand compact />}
+            </span>
+          )}
           {action}
         </div>
       </header>
       <main className="cl-container cl-auth-main">
-        {preview && <div className="cl-auth-preview"><ClNotice tone="info" title="Step 3A preview">{preview}</ClNotice></div>}
+        {preview && <div className="cl-auth-preview"><ClNotice tone="info" title={previewTitle}>{preview}</ClNotice></div>}
         <div className="cl-panel cl-auth-panel">{children}</div>
       </main>
     </div>

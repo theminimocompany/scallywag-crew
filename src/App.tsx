@@ -16,9 +16,9 @@ import AdminSettings from '@/pages/AdminSettings'
 import AdminAccessGate from '@/pages/AdminAccessGate'
 import ConsoleTeams from '@/pages/ConsoleTeams'
 import ConsoleTeamDetail from '@/pages/ConsoleTeamDetail'
-import Join from '@/pages/Join'
-import AccountHome from '@/pages/AccountHome'
-import Onboard from '@/pages/Onboard'
+import Join, { type JoinPreview } from '@/pages/Join'
+import AccountHome, { type AccountHomePreview } from '@/pages/AccountHome'
+import Onboard, { type OnboardPreview } from '@/pages/Onboard'
 import AcceptInvite from '@/pages/AcceptInvite'
 import InviteAuth from '@/pages/InviteAuth'
 import ForgotPassword from '@/pages/ForgotPassword'
@@ -195,6 +195,29 @@ export default function App() {
       if (state === 'success') return <ResetPassword key="reset-success" session={null} authReady preview="success" />
       if (state === 'warning') return <ResetPassword key="reset-warning" session={null} authReady preview="warning" />
       return <ResetPassword key="reset-form" session={null} authReady preview="form" />
+    }
+  }
+  if (seg[0] === 'mockups' && seg[1] === 'onboarding') {
+    const page = seg[2] ?? 'join'
+    const state = seg[3] ?? 'default'
+    if (page === 'join') {
+      const allowed: JoinPreview[] = ['default', 'checking', 'available', 'taken', 'validation', 'loading', 'error', 'sent', 'signed-in']
+      const preview = allowed.includes(state as JoinPreview) ? state as JoinPreview : 'default'
+      return <Join key={`join-${preview}`} session={null} preview={preview} />
+    }
+    if (page === 'account') {
+      const allowed: AccountHomePreview[] = ['default', 'loading', 'empty', 'error', 'suspended']
+      const preview = allowed.includes(state as AccountHomePreview) ? state as AccountHomePreview : 'default'
+      return <AccountHome key={`account-${preview}`} email="alex@example.com" preview={preview} />
+    }
+    if (page === 'wizard') {
+      const allowed: OnboardPreview[] = [
+        'loading', 'error', 'team', 'team-loading', 'team-error',
+        'calendar', 'calendar-preview', 'calendar-empty', 'calendar-loading', 'calendar-error',
+        'crew', 'crew-ready', 'crew-loading', 'crew-error', 'live', 'live-imported',
+      ]
+      const preview = allowed.includes(state as OnboardPreview) ? state as OnboardPreview : 'team'
+      return <Onboard key={`wizard-${preview}`} email="alex@example.com" preview={preview} />
     }
   }
   if (seg[0] === 'mockups' && seg[1] === 'signup' && seg[2] === 'closed') {

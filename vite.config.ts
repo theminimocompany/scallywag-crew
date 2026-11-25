@@ -14,6 +14,7 @@ export default defineConfig({
         manualChunks: {
           'react-vendor': ['react', 'react-dom'],
           'supabase-vendor': ['@supabase/supabase-js'],
+          'onboarding': ['./src/pages/Join.tsx', './src/pages/AccountHome.tsx', './src/pages/Onboard.tsx'],
         },
       },
     },
