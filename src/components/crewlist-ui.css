@@ -560,8 +560,8 @@
 .cl-sample-link:hover { color: var(--cl-accent-hover); }
 .cl-file-drop {
   display: flex;
-  align-items: center;
   flex-direction: column;
+  align-items: center;
   justify-content: center;
   gap: 8px;
   width: 100%;
@@ -824,6 +824,7 @@ button.cl-admin-person-row:hover { background: var(--cl-accent-soft); }
   .cl-admin-nav__item { min-height: 38px; }
   .cl-admin-signout { min-height: 38px; }
   .cl-admin-main { gap: 20px; padding-top: 30px; padding-bottom: 52px; }
+  .cl-admin-main.cl-admin-race-detail { padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px)); }
   .cl-admin-preview-notice + .cl-admin-main { padding-top: 22px; }
   .cl-admin-main > .cl-page-header h1 { font-size: 32px; }
   .cl-admin-form { padding: 20px 16px; }
@@ -839,9 +840,12 @@ button.cl-admin-person-row:hover { background: var(--cl-accent-soft); }
   .cl-admin-edit-actions > .cl-button { width: 100%; }
   .cl-admin-race-row { min-height: 88px; padding: 12px 10px; }
   .cl-admin-race-row__counts .cl-status { font-size: 10px; }
-  .cl-admin-person-row { align-items: flex-start; flex-direction: column; gap: 10px; }
-  .cl-admin-row-actions { width: 100%; }
-  .cl-admin-row-actions .cl-button:first-child { flex: 1; }
+  .cl-admin-person-row { align-items: center; flex-direction: row; gap: 10px; }
+  .cl-admin-person-row > span:first-child { flex: 1; min-width: 0; }
+  .cl-admin-row-actions { width: auto; }
+  .cl-admin-row-actions .cl-button:first-child { flex: none; }
+  .cl-admin-person-row .cl-admin-row-actions .cl-button { min-height: 44px; padding-inline: 10px; font-size: 13px; }
+  .cl-admin-person-row .cl-admin-row-actions .cl-button--danger { min-width: 44px; }
   .cl-admin-confirm { align-items: stretch; flex-direction: column; }
   .cl-admin-confirm > div:last-child { display: grid; grid-template-columns: 1fr 1fr; }
   .cl-admin-history-row { grid-template-columns: 92px minmax(0, 1fr); gap: 10px; }
