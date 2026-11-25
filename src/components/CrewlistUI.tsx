@@ -223,12 +223,12 @@ export function ClSkeleton({ rows = 3, label = 'Loading races' }: { rows?: numbe
   )
 }
 
-export function ClEmpty({ title, hint, action }: { title: string; hint: string; action?: ReactNode }) {
+export function ClEmpty({ title, hint, action }: { title: string; hint?: string; action?: ReactNode }) {
   return (
     <div className="cl-empty">
       <span className="cl-empty__mark" aria-hidden="true">/</span>
       <h3>{title}</h3>
-      <p>{hint}</p>
+      {hint && <p>{hint}</p>}
       {action}
     </div>
   )

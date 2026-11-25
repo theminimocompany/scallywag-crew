@@ -3,16 +3,20 @@ import {
   fetchRaces, fetchAllSignups, addRace,
   groupByMonth, type Race, type Signup,
 } from '@/lib/api'
-import { Spinner, Empty, ErrorBox, DateBlock, RaceMeta, TimeInput } from '@/components/bits'
+import { DateBlock, RaceMeta, TimeInput } from '@/components/bits'
+import { ClButton, ClEmpty, ClInput, ClNotice, ClPageHeader, ClSkeleton, ClStatus } from '@/components/CrewlistUI'
 import { navigate } from '@/lib/hash'
 import { currentTenantSlug } from '@/lib/tenant'
+import { previewRaces, previewSignups } from '@/pages/adminPreviewData'
 
-export default function AdminRaces() {
-  const [races, setRaces] = useState<Race[] | null>(null)
-  const [signups, setSignups] = useState<Signup[] | null>(null)
-  const [err, setErr] = useState<string | null>(null)
+export type AdminRacesPreview = 'default' | 'loading' | 'error' | 'empty' | 'add'
+
+export default function AdminRaces({ preview }: { preview?: AdminRacesPreview }) {
+  const [races, setRaces] = useState<Race[] | null>(() => preview && preview !== 'loading' && preview !== 'error' ? (preview === 'empty' ? [] : [...previewRaces]) : null)
+  const [signups, setSignups] = useState<Signup[] | null>(() => preview && preview !== 'loading' && preview !== 'error' ? (preview === 'empty' ? [] : [...previewSignups]) : null)
+  const [err, setErr] = useState<string | null>(preview === 'error' ? 'Synthetic race calendar load failure.' : null)
   const [showPast, setShowPast] = useState(false)
-  const [adding, setAdding] = useState(false)
+  const [adding, setAdding] = useState(preview === 'add')
   const [name, setName] = useState('')
   const [date, setDate] = useState('')
   const [startTime, setStartTime] = useState('')
@@ -20,12 +24,19 @@ export default function AdminRaces() {
   const [busy, setBusy] = useState(false)
 
   const load = () => {
+    if (preview) {
+      setErr(null)
+      setRaces(preview === 'empty' ? [] : [...previewRaces])
+      setSignups(preview === 'empty' ? [] : [...previewSignups])
+      return
+    }
     setErr(null)
     Promise.all([fetchRaces(), fetchAllSignups()])
       .then(([r, s]) => { setRaces(r); setSignups(s) })
       .catch(e => setErr(e.message))
   }
-  useEffect(load, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!preview) load() }, [])
 
   const today = new Date().toISOString().slice(0, 10)
   const counts = useMemo(() => {
@@ -43,97 +54,99 @@ export default function AdminRaces() {
     return showPast ? races : races.filter(r => r.race_date >= today)
   }, [races, showPast, today])
 
+  function openRace(id: string) {
+    navigate(preview ? `/mockups/admin/race-detail/default` : `/t/${currentTenantSlug()}/admin/races/${id}`)
+  }
+
   async function submitAdd(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim() || !date) return
     setBusy(true)
     try {
-      await addRace(name.trim(), date, { startTime, location })
+      if (preview) {
+        const race: Race = {
+          id: `preview-added-${date}`,
+          tenant_id: previewRaces[0].tenant_id,
+          name: name.trim(),
+          race_date: date,
+          start_time: startTime || null,
+          location: location.trim() || null,
+          is_hidden: false,
+          signup_closed: false,
+        }
+        setRaces(current => [...(current ?? []), race].sort((a, b) => a.race_date.localeCompare(b.race_date)))
+      } else {
+        await addRace(name.trim(), date, { startTime, location })
+      }
       setName(''); setDate(''); setStartTime(''); setLocation(''); setAdding(false)
-      load()
+      if (!preview) load()
     } catch (e2) { setErr((e2 as Error).message) } finally { setBusy(false) }
   }
 
   return (
-    <main className="page page-wide flex-1 py-5 space-y-5 fade-in w-full mx-auto">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="font-semibold" style={{ fontSize: 22 }}>Races</h1>
-          <p className="text-sm mt-0.5" style={{ color: 'hsl(var(--slate))' }}>
-            Tap a race to pick crew from the available list.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button className="btn-ghost" onClick={() => setShowPast(v => !v)}>
-            {showPast ? 'Hide past' : 'Show past'}
-          </button>
-          <button className="btn-primary" onClick={() => setAdding(v => !v)}>
-            {adding ? 'Cancel' : 'Add race'}
-          </button>
-        </div>
-      </div>
+    <main className="cl-container cl-admin-main">
+      <ClPageHeader
+        eyebrow="Race management"
+        title="Races"
+        description="Open a race to select crew, remove sign-ups or copy the WhatsApp list."
+        actions={<>
+          <ClButton variant="secondary" onClick={() => setShowPast(v => !v)}>{showPast ? 'Hide past' : 'Show past'}</ClButton>
+          <ClButton variant={adding ? 'secondary' : 'primary'} onClick={() => setAdding(v => !v)}>{adding ? 'Cancel' : 'Add race'}</ClButton>
+        </>}
+      />
 
       {adding && (
-        <form onSubmit={submitAdd} className="panel p-4 space-y-3 fade-in">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="space-y-1 sm:col-span-2">
-              <span className="text-xs font-medium">Race name</span>
-              <input className="input" placeholder="Race name" value={name} onChange={e => setName(e.target.value)} required />
-            </label>
-            <label className="space-y-1">
-              <span className="text-xs font-medium">Race date</span>
-              <input className="input" type="date" value={date} onChange={e => setDate(e.target.value)} required aria-label="Race date" />
-            </label>
-            <label className="space-y-1">
-              <span className="text-xs font-medium">Start time <span style={{ color: 'hsl(var(--slate))' }}>(optional)</span></span>
-              <TimeInput value={startTime} onChange={setStartTime} disabled={busy} ariaLabel="Race start time, optional, 24-hour HH:MM" />
-            </label>
-            <label className="space-y-1 sm:col-span-2">
-              <span className="text-xs font-medium">Location <span style={{ color: 'hsl(var(--slate))' }}>(optional)</span></span>
-              <input className="input" placeholder="e.g. Victoria Harbour" value={location} onChange={e => setLocation(e.target.value)} />
-            </label>
+        <form onSubmit={submitAdd} className="cl-panel cl-admin-form">
+          <div className="cl-admin-section-heading">
+            <div><p className="cl-eyebrow">New calendar entry</p><h2>Add a race</h2></div>
+            <p>Only the name and date are required.</p>
           </div>
-          <button className="btn-primary" disabled={busy} type="submit">{busy ? 'Saving…' : 'Save race'}</button>
+          <div className="cl-admin-form-grid">
+            <ClInput id="admin-race-name" className="cl-admin-span-2" label="Race name" placeholder="e.g. Winter Series — Race 5" value={name} onChange={e => setName(e.target.value)} required />
+            <ClInput id="admin-race-date" label="Race date" type="date" value={date} onChange={e => setDate(e.target.value)} required />
+            <label className="cl-field">
+              <span className="cl-field__label-row"><span className="cl-label">Start time</span><span className="cl-field__optional">Optional</span></span>
+              <TimeInput value={startTime} onChange={setStartTime} ariaLabel="Race start time, optional, 24-hour HH:MM" />
+              <span className="cl-field__hint">24-hour time (HH:MM)</span>
+            </label>
+            <ClInput id="admin-race-location" className="cl-admin-span-2" label="Location" optional placeholder="e.g. Victoria Harbour" value={location} onChange={e => setLocation(e.target.value)} />
+          </div>
+          <div className="cl-admin-form-actions"><ClButton loading={busy} type="submit">Save race</ClButton></div>
         </form>
       )}
 
-      {err && <ErrorBox message={err} onRetry={load} />}
-      {!err && (!races || !signups) && <Spinner />}
+      {err && <ClNotice tone="error" title="Could not load races" action={<ClButton variant="secondary" size="small" onClick={load}>Try again</ClButton>}>{err}</ClNotice>}
+      {!err && (!races || !signups) && <div className="cl-panel cl-admin-state"><ClSkeleton rows={4} label="Loading admin races" /></div>}
       {races && signups && visible.length === 0 && (
-        <Empty title="No races here" hint="Add one manually or import the season calendar from the Import tab." />
+        <div className="cl-panel"><ClEmpty title="No races here" hint="Add one manually or import the season calendar from the Import tab." action={<ClButton onClick={() => setAdding(true)}>Add race</ClButton>} /></div>
       )}
 
-      {races && signups && groupByMonth(visible).map(([month, rs]) => (
-        <section key={month}>
-          <h2 className="month-sep">{month}</h2>
-          <div className="divide-y divide-[hsl(var(--frost))]">
-            {rs.map(r => {
-              const c = counts.get(r.id) ?? { a: 0, s: 0 }
-              const past = r.race_date < today
-              return (
-                <div key={r.id} className="flex items-center gap-3 py-3 group">
-                  <DateBlock iso={r.race_date} />
-                  <button
-                    className="flex-1 min-w-0 text-left"
-                    onClick={() => navigate(`/t/${currentTenantSlug()}/admin/races/${r.id}`)}
-                  >
-                    <span className={`font-medium leading-snug block ${past ? 'opacity-60' : ''}`}>{r.name}</span>
-                    <RaceMeta startTime={r.start_time} location={r.location} />
-                    <span className="flex flex-wrap gap-1.5 mt-1.5">
-                      <span className="chip" style={{ minHeight: 26, fontSize: 12 }}>
-                        <span className="dot" aria-hidden />{c.a} available
-                      </span>
-                      <span className="chip chip-on" style={{ minHeight: 26, fontSize: 12 }}>
-                        <span className="dot" aria-hidden />{c.s} selected
-                      </span>
+      <div className="cl-admin-months">
+        {races && signups && groupByMonth(visible).map(([month, rs]) => (
+          <section key={month} className="cl-admin-month">
+            <h2>{month}</h2>
+            <div className="cl-panel cl-admin-race-panel">
+              {rs.map(r => {
+                const c = counts.get(r.id) ?? { a: 0, s: 0 }
+                const past = r.race_date < today
+                return (
+                  <button key={r.id} className="cl-admin-race-row" onClick={() => openRace(r.id)}>
+                    <DateBlock iso={r.race_date} />
+                    <span className={`cl-admin-race-row__content ${past ? 'cl-admin-past' : ''}`}>
+                      <strong>{r.name}</strong>
+                      <RaceMeta startTime={r.start_time} location={r.location} />
+                    </span>
+                    <span className="cl-admin-race-row__counts">
+                      <ClStatus>{c.a} available</ClStatus>
+                      <ClStatus tone="selected">{c.s} selected</ClStatus>
                     </span>
                   </button>
-                </div>
-              )
-            })}
-          </div>
-        </section>
-      ))}
+                )
+              })}
+            </div>
+          </section>
+        ))}
+      </div>
     </main>
   )
 }

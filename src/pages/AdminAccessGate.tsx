@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { checkAdminAccess, errorText } from '@/lib/api'
 import { navigate } from '@/lib/hash'
 import { currentTenantSlug, useTeamName } from '@/lib/tenant'
-import { ErrorBox, Spinner } from '@/components/bits'
+import { ClButton, ClNotice, ClSkeleton, TeamBrand } from '@/components/CrewlistUI'
 
 type AccessState =
   | { status: 'checking' }
@@ -10,20 +10,28 @@ type AccessState =
   | { status: 'denied' }
   | { status: 'error'; message: string }
 
+export type AdminAccessPreview = 'checking' | 'denied' | 'error'
+
 interface Props {
   tenantId: string
   userId: string
   onSignOut: () => Promise<void>
   children: React.ReactNode
+  preview?: AdminAccessPreview
 }
 
 /** Do not mount the admin header or pages until this team's access is proven. */
-export default function AdminAccessGate({ tenantId, userId, onSignOut, children }: Props) {
+export default function AdminAccessGate({ tenantId, userId, onSignOut, children, preview }: Props) {
   const teamName = useTeamName()
-  const [state, setState] = useState<AccessState>({ status: 'checking' })
+  const [state, setState] = useState<AccessState>(() => preview === 'denied'
+    ? { status: 'denied' }
+    : preview === 'error'
+      ? { status: 'error', message: 'Synthetic access-check failure.' }
+      : { status: 'checking' })
   const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
+    if (preview) return
     let cancelled = false
     checkAdminAccess(tenantId, userId)
       .then(allowed => {
@@ -33,10 +41,10 @@ export default function AdminAccessGate({ tenantId, userId, onSignOut, children 
         if (!cancelled) setState({ status: 'error', message: errorText(e) })
       })
     return () => { cancelled = true }
-  }, [tenantId, userId, attempt])
+  }, [tenantId, userId, attempt, preview])
 
-  // A revocation made in another browser is picked up when this tab is revisited.
   useEffect(() => {
+    if (preview) return
     const recheck = () => {
       if (document.visibilityState === 'visible') setAttempt(value => value + 1)
     }
@@ -46,53 +54,47 @@ export default function AdminAccessGate({ tenantId, userId, onSignOut, children 
       window.removeEventListener('focus', recheck)
       document.removeEventListener('visibilitychange', recheck)
     }
-  }, [])
+  }, [preview])
 
   if (state.status === 'allowed') return children
 
   return (
-    <div className="min-h-100dvh flex flex-col">
-      <header className="hairline-b">
-        <div className="page flex items-center justify-between gap-3" style={{ minHeight: 56 }}>
+    <div className="cl-root cl-admin-access">
+      <header className="cl-public-header">
+        <div className="cl-container cl-public-header__inner">
           <button
-            className="wordmark cursor-pointer text-left"
-            onClick={() => navigate(`/t/${currentTenantSlug()}/schedule`)}
+            type="button"
+            className="cl-public-brand"
+            onClick={() => navigate(preview ? '/mockups/admin/races/default' : `/t/${currentTenantSlug()}/schedule`)}
             aria-label={`${teamName} public schedule`}
           >
-            {teamName}
-            <span style={{ marginLeft: 8, fontSize: 11, letterSpacing: '0.04em', fontWeight: 600, color: 'hsl(var(--royal))', textTransform: 'none' }}>
-              by Crewlist
-            </span>
+            <TeamBrand teamName={preview ? 'Testing101' : teamName} />
           </button>
-          <button
-            className="chip cursor-pointer flex-none"
+          <ClButton
+            variant="secondary"
+            size="small"
             onClick={async () => {
-              await onSignOut()
-              navigate('/login')
+              if (!preview) await onSignOut()
+              navigate(preview ? '/mockups/auth/login/default' : '/login')
             }}
-          >
-            Sign out
-          </button>
+          >Sign out</ClButton>
         </div>
       </header>
-      <main className="page flex-1 py-10 grid place-items-center w-full">
-        {state.status === 'checking' && <Spinner label="Checking admin access…" />}
+      <main className="cl-container cl-admin-access-main">
+        {state.status === 'checking' && <div className="cl-panel cl-admin-state"><ClSkeleton rows={3} label="Checking admin access" /></div>}
         {state.status === 'error' && (
-          <ErrorBox message={`We couldn’t verify your admin access. ${state.message}`} onRetry={() => setAttempt(value => value + 1)} />
+          <ClNotice tone="error" title="We couldn’t verify your admin access" action={<ClButton variant="secondary" size="small" onClick={() => preview ? setState({ status: 'checking' }) : setAttempt(value => value + 1)}>Try again</ClButton>}>
+            {state.message}
+          </ClNotice>
         )}
         {state.status === 'denied' && (
-          <div className="panel p-6 sm:p-8 space-y-5 w-full fade-in">
+          <div className="cl-panel cl-admin-access-denied">
+            <p className="cl-eyebrow">Team access</p>
+            <h1>You don’t have admin access</h1>
+            <p>This account can’t view or change {preview ? 'Testing101' : teamName}’s admin console. If your access was removed, ask a current team admin to send you a new invitation.</p>
             <div>
-              <div className="eyebrow">Team access</div>
-              <h1 className="font-semibold" style={{ fontSize: 24 }}>You don’t have admin access</h1>
-              <p className="text-sm mt-2" style={{ color: 'hsl(var(--slate))' }}>
-                This account can’t view or change {teamName}’s admin console. If your access was removed,
-                ask a current team admin to send you a new invitation.
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <button className="btn-primary" onClick={() => navigate('/login')}>Go to your teams</button>
-              <button className="btn-ghost" onClick={() => navigate(`/t/${currentTenantSlug()}/schedule`)}>View public schedule</button>
+              <ClButton onClick={() => navigate(preview ? '/mockups/onboarding/account/default' : '/login')}>Go to your teams</ClButton>
+              <ClButton variant="secondary" onClick={() => navigate(preview ? '/mockups/schedule' : `/t/${currentTenantSlug()}/schedule`)}>View public schedule</ClButton>
             </div>
           </div>
         )}

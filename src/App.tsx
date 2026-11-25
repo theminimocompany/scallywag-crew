@@ -14,6 +14,7 @@ import AdminRoster from '@/pages/AdminRoster'
 import AdminImport from '@/pages/AdminImport'
 import AdminSettings from '@/pages/AdminSettings'
 import AdminAccessGate from '@/pages/AdminAccessGate'
+import AdminPreview from '@/pages/AdminPreview'
 import ConsoleTeams from '@/pages/ConsoleTeams'
 import ConsoleTeamDetail from '@/pages/ConsoleTeamDetail'
 import Join, { type JoinPreview } from '@/pages/Join'
@@ -39,6 +40,8 @@ export default function App() {
   const [tenantLoad, setTenantLoad] = useState<TenantLoad>({ state: 'loading' })
 
   useEffect(() => {
+    const previewRoute = segments(window.location.hash)
+    if (previewRoute[0] === 'mockups' && previewRoute[1] === 'admin') return
     // PKCE emails carry ?code=…. Implicit emails are marked with
     // ?auth_callback=1 before Supabase consumes their #access_token=… fragment.
     const params = new URLSearchParams(window.location.search)
@@ -170,6 +173,7 @@ export default function App() {
   if (seg[0] === 'reset-password') return <ResetPassword session={session} authReady={authReady} />
 
   // Isolated design previews; the production root remains Scallywag.
+  if (seg[0] === 'mockups' && seg[1] === 'admin') return <AdminPreview />
   if (seg[0] === 'mockups' && seg[1] === 'auth') {
     const page = seg[2] ?? 'login'
     const state = seg[3] ?? 'default'
@@ -349,7 +353,7 @@ export default function App() {
     const sub = seg[3] ?? 'races'
     return (
       <AdminAccessGate key={`${tenantLoad.id}:${session.user.id}`} tenantId={tenantLoad.id} userId={session.user.id} onSignOut={signOut}>
-        <div className="min-h-100dvh flex flex-col">
+        <div className="cl-root cl-admin-app">
           <AdminHeader onSignOut={signOut} />
           {sub === 'races' && seg[4] && <AdminRaceDetail raceId={seg[4]} />}
           {sub === 'races' && !seg[4] && <AdminRaces />}

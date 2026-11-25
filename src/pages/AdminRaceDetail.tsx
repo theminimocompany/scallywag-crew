@@ -2,32 +2,43 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   fetchRaces, fetchRaceSignups, fetchCrewAll,
   setSignupStatus, removeSignup, addToSelected, updateRaceDetails, deleteRace,
-  type Race, type Signup, type Crew,
+  isValidTimeInput, type Race, type Signup, type Crew,
 } from '@/lib/api'
-import { Spinner, ErrorBox, DateBlock, RaceMeta, ErrText, TimeInput } from '@/components/bits'
+import { DateBlock, RaceMeta, TimeInput } from '@/components/bits'
 import { FloatingBar } from '@/components/chrome'
+import { ClButton, ClEmpty, ClInput, ClNotice, ClPageHeader, ClSkeleton, ClStatus } from '@/components/CrewlistUI'
 import { navigate } from '@/lib/hash'
 import { currentTenantSlug } from '@/lib/tenant'
+import { previewCrew, previewRaceRows, previewRaces } from '@/pages/adminPreviewData'
 
 type Row = Signup & { crew: Pick<Crew, 'id' | 'name' | 'is_approved'> }
+export type AdminRaceDetailPreview = 'default' | 'loading' | 'error' | 'edit' | 'empty'
 
-export default function AdminRaceDetail({ raceId }: { raceId: string }) {
-  const [race, setRace] = useState<Race | null>(null)
-  const [rows, setRows] = useState<Row[] | null>(null)
-  const [crew, setCrew] = useState<Crew[] | null>(null)
-  const [err, setErr] = useState<string | null>(null)
+export default function AdminRaceDetail({ raceId, preview }: { raceId: string; preview?: AdminRaceDetailPreview }) {
+  const [race, setRace] = useState<Race | null>(() => preview && preview !== 'loading' && preview !== 'error' ? { ...previewRaces[0] } : null)
+  const [rows, setRows] = useState<Row[] | null>(() => preview && preview !== 'loading' && preview !== 'error' ? (preview === 'empty' ? [] : previewRaceRows.map(row => ({ ...row, crew: { ...row.crew } }))) : null)
+  const [crew, setCrew] = useState<Crew[] | null>(() => preview && preview !== 'loading' && preview !== 'error' ? previewCrew.map(person => ({ ...person })) : null)
+  const [err, setErr] = useState<string | null>(preview === 'error' ? 'Synthetic race detail load failure.' : null)
   const [query, setQuery] = useState('')
   const [copied, setCopied] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
-  const [editing, setEditing] = useState(false)
-  const [editName, setEditName] = useState('')
-  const [editDate, setEditDate] = useState('')
-  const [editTime, setEditTime] = useState('')
-  const [editLocation, setEditLocation] = useState('')
+  const [editing, setEditing] = useState(preview === 'edit')
+  const [editName, setEditName] = useState(preview === 'edit' ? previewRaces[0].name : '')
+  const [editDate, setEditDate] = useState(preview === 'edit' ? previewRaces[0].race_date : '')
+  const [editTime, setEditTime] = useState(preview === 'edit' ? previewRaces[0].start_time ?? '' : '')
+  const [editLocation, setEditLocation] = useState(preview === 'edit' ? previewRaces[0].location ?? '' : '')
   const [editBusy, setEditBusy] = useState(false)
+  const [deleteBusy, setDeleteBusy] = useState(false)
   const [editErr, setEditErr] = useState<string | null>(null)
 
   const load = () => {
+    if (preview) {
+      setErr(null)
+      setRace({ ...previewRaces[0] })
+      setRows(preview === 'empty' ? [] : previewRaceRows.map(row => ({ ...row, crew: { ...row.crew } })))
+      setCrew(previewCrew.map(person => ({ ...person })))
+      return
+    }
     setErr(null)
     Promise.all([fetchRaces(), fetchRaceSignups(raceId), fetchCrewAll()])
       .then(([rs, su, cr]) => {
@@ -37,7 +48,8 @@ export default function AdminRaceDetail({ raceId }: { raceId: string }) {
       })
       .catch(e => setErr(e.message))
   }
-  useEffect(load, [raceId])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!preview) load() }, [raceId])
 
   const available = useMemo(() => (rows ?? []).filter(r => r.status === 'available'), [rows])
   const selected = useMemo(() => (rows ?? []).filter(r => r.status === 'selected'), [rows])
@@ -52,10 +64,12 @@ export default function AdminRaceDetail({ raceId }: { raceId: string }) {
       .slice(0, 8)
   }, [crew, rows, query])
 
-  async function act(fn: () => Promise<void>, id?: string) {
+  async function act(fn: () => Promise<void>, id?: string, previewAction?: () => void) {
     if (id) setBusyId(id)
-    try { await fn(); await load() }
-    catch (e) { setErr((e as Error).message) }
+    try {
+      if (preview) previewAction?.()
+      else { await fn(); await load() }
+    } catch (e) { setErr((e as Error).message) }
     finally { setBusyId(null) }
   }
 
@@ -75,14 +89,19 @@ export default function AdminRaceDetail({ raceId }: { raceId: string }) {
     setEditBusy(true)
     setEditErr(null)
     try {
-      await updateRaceDetails(raceId, {
-        name: editName,
-        raceDate: editDate,
-        startTime: editTime,
-        location: editLocation,
-      })
+      if (!isValidTimeInput(editTime)) throw new Error('Start time must use 24-hour HH:MM, for example 13:45.')
+      if (preview) {
+        setRace(current => current ? { ...current, name: editName.trim(), race_date: editDate, start_time: editTime || null, location: editLocation.trim() || null } : current)
+      } else {
+        await updateRaceDetails(raceId, {
+          name: editName,
+          raceDate: editDate,
+          startTime: editTime,
+          location: editLocation,
+        })
+      }
       setEditing(false)
-      await load()
+      if (!preview) await load()
     } catch (e2) {
       setEditErr((e2 as Error).message)
     } finally {
@@ -95,17 +114,22 @@ export default function AdminRaceDetail({ raceId }: { raceId: string }) {
     const signupCount = rows.length
     const confirmed = window.confirm(
       `Delete "${race.name}" (${race.race_date})?\n` +
-      `This cannot be undone. Deleting this race also removes its ${signupCount} sign-up${signupCount === 1 ? '' : 's'}.`,
+      `${signupCount} sign-up${signupCount === 1 ? '' : 's'} will also be removed.\n` +
+      'This cannot be undone.',
     )
     if (!confirmed) return
-    setEditBusy(true)
+    setDeleteBusy(true)
     setEditErr(null)
     try {
-      await deleteRace(raceId)
-      navigate(`/t/${currentTenantSlug()}/admin/races`)
-    } catch (e) {
-      setEditErr((e as Error).message)
-      setEditBusy(false)
+      if (preview) navigate('/mockups/admin/races/default')
+      else {
+        await deleteRace(race.id)
+        navigate(`/t/${currentTenantSlug()}/admin/races`)
+      }
+    } catch (e2) {
+      setEditErr((e2 as Error).message)
+    } finally {
+      setDeleteBusy(false)
     }
   }
 
@@ -123,176 +147,120 @@ export default function AdminRaceDetail({ raceId }: { raceId: string }) {
       names.length > 0 ? `Crew (${names.length}):` : 'No crew selected yet.',
       ...names.map((n, i) => `${i + 1}. ${n}`),
     ].join('\n')
+    if (preview) {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1800)
+      return
+    }
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 1800)
     })
   }
 
-  if (err) return <main className="page page-wide py-5 w-full mx-auto"><ErrorBox message={err} onRetry={load} /></main>
-  if (!race || !rows || !crew) return <main className="page page-wide py-5 w-full mx-auto"><Spinner /></main>
+  if (err) return <main className="cl-container cl-admin-main"><ClNotice tone="error" title="Could not load race" action={<ClButton variant="secondary" size="small" onClick={load}>Try again</ClButton>}>{err}</ClNotice></main>
+  if (!race || !rows || !crew) return <main className="cl-container cl-admin-main"><div className="cl-panel cl-admin-state"><ClSkeleton rows={5} label="Loading race crew" /></div></main>
 
   return (
-    <main className="page page-wide flex-1 py-5 pb-32 space-y-5 fade-in w-full mx-auto">
-      <button className="chip cursor-pointer" onClick={() => navigate(`/t/${currentTenantSlug()}/admin/races`)}>
-        ← All races
-      </button>
-
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div className="flex gap-3 items-start min-w-0">
-          <DateBlock iso={race.race_date} />
-          <div className="min-w-0">
-            <h1 className="font-semibold leading-snug break-words" style={{ fontSize: 20 }}>{race.name}</h1>
-            <RaceMeta startTime={race.start_time} location={race.location} />
-            <p className="text-sm mt-0.5" style={{ color: 'hsl(var(--slate))' }}>
-              {available.length} available · {selected.length} selected
-            </p>
-          </div>
-        </div>
-        <button className="btn-ghost" onClick={beginEdit}>Edit race details</button>
+    <main className="cl-container cl-admin-main cl-admin-race-detail">
+      <div className="cl-admin-back"><ClButton variant="text" onClick={() => navigate(preview ? '/mockups/admin/races/default' : `/t/${currentTenantSlug()}/admin/races`)}>← All races</ClButton></div>
+      <ClPageHeader
+        eyebrow="Race crew"
+        title={race.name}
+        actions={<ClButton variant="secondary" onClick={beginEdit}>Edit race details</ClButton>}
+      />
+      <div className="cl-admin-race-detail-meta">
+        <DateBlock iso={race.race_date} />
+        <RaceMeta startTime={race.start_time} location={race.location} />
       </div>
 
       {editing && (
-        <form className="panel p-4 space-y-4 fade-in" onSubmit={saveDetails}>
-          <div>
-            <h2 className="font-semibold">Edit race details</h2>
-            <p className="text-sm mt-0.5" style={{ color: 'hsl(var(--slate))' }}>Start time and location are optional.</p>
+        <form className="cl-panel cl-admin-form" onSubmit={saveDetails}>
+          <div className="cl-admin-section-heading">
+            <div><p className="cl-eyebrow">Calendar entry</p><h2>Edit race details</h2></div>
+            <p>Start time and location are optional.</p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="space-y-1 sm:col-span-2">
-              <span className="text-xs font-medium">Race name</span>
-              <input className="input" value={editName} onChange={e => setEditName(e.target.value)} required />
+          <div className="cl-admin-form-grid">
+            <ClInput id="edit-race-name" className="cl-admin-span-2" label="Race name" value={editName} onChange={e => setEditName(e.target.value)} required />
+            <ClInput id="edit-race-date" label="Race date" type="date" value={editDate} onChange={e => setEditDate(e.target.value)} required />
+            <label className="cl-field">
+              <span className="cl-field__label-row"><span className="cl-label">Start time</span><span className="cl-field__optional">Optional</span></span>
+              <TimeInput value={editTime} onChange={setEditTime} ariaLabel="Race start time, optional, 24-hour HH:MM" />
+              <span className="cl-field__hint">24-hour time (HH:MM)</span>
             </label>
-            <label className="space-y-1">
-              <span className="text-xs font-medium">Race date</span>
-              <input className="input" type="date" value={editDate} onChange={e => setEditDate(e.target.value)} required />
-            </label>
-            <label className="space-y-1">
-              <span className="text-xs font-medium">Start time <span style={{ color: 'hsl(var(--slate))' }}>(optional)</span></span>
-              <TimeInput value={editTime} onChange={setEditTime} disabled={editBusy} ariaLabel="Race start time, optional, 24-hour HH:MM" />
-            </label>
-            <label className="space-y-1 sm:col-span-2">
-              <span className="text-xs font-medium">Location <span style={{ color: 'hsl(var(--slate))' }}>(optional)</span></span>
-              <input className="input" placeholder="e.g. Victoria Harbour" value={editLocation} onChange={e => setEditLocation(e.target.value)} />
-            </label>
+            <ClInput id="edit-race-location" className="cl-admin-span-2" label="Location" optional placeholder="e.g. Victoria Harbour" value={editLocation} onChange={e => setEditLocation(e.target.value)} />
           </div>
-          {editErr && <ErrText>{editErr}</ErrText>}
-          <div className="flex gap-2 flex-wrap">
-            <button className="btn-primary" type="submit" disabled={editBusy}>{editBusy ? 'Saving…' : 'Save changes'}</button>
-            <button className="btn-ghost" type="button" disabled={editBusy} onClick={() => setEditing(false)}>Cancel</button>
-            <button
-              className="btn-ghost w-full sm:w-auto sm:ml-auto"
-              style={{ color: 'hsl(var(--destructive))', borderColor: 'hsl(var(--destructive) / 0.45)' }}
-              type="button"
-              disabled={editBusy}
-              onClick={removeRace}
-            >
-              Delete race
-            </button>
+          {editErr && <ClNotice tone="error" title="Changes not saved">{editErr}</ClNotice>}
+          <div className="cl-admin-edit-actions">
+            <div>
+              <ClButton type="submit" loading={editBusy} disabled={deleteBusy}>Save changes</ClButton>
+              <ClButton variant="secondary" disabled={editBusy || deleteBusy} onClick={() => setEditing(false)}>Cancel</ClButton>
+            </div>
+            <ClButton variant="danger" disabled={editBusy} loading={deleteBusy} onClick={removeRace}>Delete race</ClButton>
           </div>
         </form>
       )}
 
-      {/* Add anyone directly */}
-      <section className="space-y-2">
-        <h2 className="eyebrow">Add crew to this race</h2>
-        <input
-          className="input" placeholder="Search crew to add straight to Selected…"
-          value={query} onChange={e => setQuery(e.target.value)}
-          aria-label="Search crew to add"
-        />
+      <section className="cl-admin-search-section">
+        <ClInput id="race-crew-search" label="Search approved crew" placeholder="Type a crew name…" value={query} onChange={e => setQuery(e.target.value)} />
         {query && (
-          <div className="panel divide-y divide-[hsl(var(--frost))]">
+          <div className="cl-panel cl-admin-search-results">
             {addable.map(c => (
-              <button key={c.id} className="checkrow" onClick={() => act(() => addToSelected(raceId, c.id))}>
-                <span className="font-medium flex-1">{c.name}</span>
-                <span className="chip chip-on" style={{ minHeight: 26, fontSize: 12 }}>+ Select</span>
+              <button key={c.id} className="cl-admin-person-row" onClick={() => act(
+                () => addToSelected(raceId, c.id),
+                undefined,
+                () => {
+                  const row: Row = { id: `preview-signup-${c.id}`, tenant_id: c.tenant_id, race_id: raceId, crew_id: c.id, status: 'selected', source: 'admin', created_at: '2026-11-25T00:00:00Z', crew: { id: c.id, name: c.name, is_approved: c.is_approved } }
+                  setRows(current => [...(current ?? []), row])
+                  setQuery('')
+                },
+              )}>
+                <span><strong>{c.name}</strong><small>Approved crew</small></span>
+                <ClStatus tone="selected">+ Select</ClStatus>
               </button>
             ))}
-            {addable.length === 0 && (
-              <p className="p-3 text-sm text-center" style={{ color: 'hsl(var(--slate))' }}>
-                No matching crew — everyone matching is already on this race.
-              </p>
-            )}
+            {addable.length === 0 && <ClEmpty title="No matching crew" hint="Everyone matching this search is already on the race." />}
           </div>
         )}
       </section>
 
-      <div className="grid gap-5 md:grid-cols-2">
-        {/* Available */}
-        <section className="space-y-2">
-          <h2 className="eyebrow">Available · {available.length}</h2>
-          {available.length > 0 && (
-          <div className="panel divide-y divide-[hsl(var(--frost))]">
+      <div className="cl-admin-crew-columns">
+        <section>
+          <div className="cl-admin-section-heading cl-admin-section-heading--compact"><div><p className="cl-eyebrow">Sign-ups</p><h2>Available · {available.length}</h2></div></div>
+          <div className="cl-panel cl-admin-person-list">
+            {available.length === 0 && <ClEmpty title="Nobody available" />}
             {available.map(r => (
-              <div key={r.id} className="flex items-center gap-2 px-3" style={{ minHeight: 48 }}>
-                <span className="flex-1 min-w-0 font-medium truncate">
-                  {r.crew.name}
-                  {!r.crew.is_approved && <span className="badge-new ml-2">new</span>}
-                </span>
-                <button
-                  className="chip chip-on cursor-pointer" style={{ minHeight: 30, fontSize: 12.5 }}
-                  disabled={busyId === r.id}
-                  onClick={() => act(() => setSignupStatus(r.id, 'selected'), r.id)}
-                >
-                  Select →
-                </button>
-                <button
-                  className="chip cursor-pointer" style={{ minHeight: 30, fontSize: 12.5, color: 'hsl(var(--destructive))' }}
-                  disabled={busyId === r.id}
-                  onClick={() => { if (window.confirm(`Remove ${r.crew.name} from this race?`)) act(() => removeSignup(r.id), r.id) }}
-                  aria-label={`Remove ${r.crew.name}`}
-                >
-                  ✕
-                </button>
+              <div key={r.id} className="cl-admin-person-row">
+                <span><strong>{r.crew.name}</strong>{!r.crew.is_approved && <small>Pending review</small>}</span>
+                <div className="cl-admin-row-actions">
+                  <ClButton size="small" variant="secondary" disabled={busyId === r.id} onClick={() => act(() => setSignupStatus(r.id, 'selected'), r.id, () => setRows(current => (current ?? []).map(row => row.id === r.id ? { ...row, status: 'selected' } : row)))}>Select</ClButton>
+                  <ClButton size="small" variant="danger" disabled={busyId === r.id} aria-label={`Remove ${r.crew.name}`} onClick={() => { if (window.confirm(`Remove ${r.crew.name} from this race?`)) act(() => removeSignup(r.id), r.id, () => setRows(current => (current ?? []).filter(row => row.id !== r.id))) }}>×</ClButton>
+                </div>
               </div>
             ))}
           </div>
-          )}
         </section>
 
-        {/* Selected */}
-        <section className="space-y-2">
-          <h2 className="eyebrow">Selected · {selected.length}</h2>
-          {selected.length > 0 && (
-          <div className="panel divide-y divide-[hsl(var(--frost))]" style={{ borderColor: 'hsl(var(--royal) / 0.35)' }}>
+        <section>
+          <div className="cl-admin-section-heading cl-admin-section-heading--compact"><div><p className="cl-eyebrow">Final crew</p><h2>Selected · {selected.length}</h2></div></div>
+          <div className="cl-panel cl-admin-person-list cl-admin-person-list--selected">
+            {selected.length === 0 && <ClEmpty title="No crew selected" />}
             {selected.map(r => (
-              <div key={r.id} className="flex items-center gap-2 px-3" style={{ minHeight: 48 }}>
-                <span className="dot flex-none" style={{ width: 7, height: 7, borderRadius: 999, background: 'hsl(var(--royal))' }} aria-hidden />
-                <span className="flex-1 min-w-0 font-medium truncate">{r.crew.name}</span>
-                <button
-                  className="chip cursor-pointer" style={{ minHeight: 30, fontSize: 12.5 }}
-                  disabled={busyId === r.id}
-                  onClick={() => act(() => setSignupStatus(r.id, 'available'), r.id)}
-                  aria-label={`Deselect ${r.crew.name}`}
-                >
-                  ← Deselect
-                </button>
-                <button
-                  className="chip cursor-pointer" style={{ minHeight: 30, fontSize: 12.5, color: 'hsl(var(--destructive))' }}
-                  disabled={busyId === r.id}
-                  onClick={() => { if (window.confirm(`Remove ${r.crew.name} from this race?`)) act(() => removeSignup(r.id), r.id) }}
-                  aria-label={`Remove ${r.crew.name}`}
-                >
-                  ✕
-                </button>
+              <div key={r.id} className="cl-admin-person-row">
+                <span><strong>{r.crew.name}</strong></span>
+                <div className="cl-admin-row-actions">
+                  <ClButton size="small" variant="secondary" disabled={busyId === r.id} aria-label={`Deselect ${r.crew.name}`} onClick={() => act(() => setSignupStatus(r.id, 'available'), r.id, () => setRows(current => (current ?? []).map(row => row.id === r.id ? { ...row, status: 'available' } : row)))}>Deselect</ClButton>
+                  <ClButton size="small" variant="danger" disabled={busyId === r.id} aria-label={`Remove ${r.crew.name}`} onClick={() => { if (window.confirm(`Remove ${r.crew.name} from this race?`)) act(() => removeSignup(r.id), r.id, () => setRows(current => (current ?? []).filter(row => row.id !== r.id))) }}>×</ClButton>
+                </div>
               </div>
             ))}
           </div>
-          )}
         </section>
       </div>
 
-      {/* WhatsApp copy bar — hidden while editing so it cannot cover Save/Cancel. */}
       {!editing && (
-        <FloatingBar wide>
-          <button
-            className="btn-primary w-full"
-            style={{ boxShadow: '0 10px 24px hsl(var(--royal) / 0.35)' }}
-            onClick={copyWhatsApp}
-          >
-            {copied ? 'Copied ✓' : `Copy crew list for WhatsApp (${selected.length})`}
-          </button>
+        <FloatingBar wide crewlist>
+          <ClButton full onClick={copyWhatsApp}>{copied ? 'Copied ✓' : `Copy crew list for WhatsApp (${selected.length})`}</ClButton>
         </FloatingBar>
       )}
     </main>

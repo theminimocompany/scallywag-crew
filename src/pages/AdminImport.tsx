@@ -1,18 +1,24 @@
 import { useEffect, useState } from 'react'
-import { fetchRaces, parseRhkycCsv, addRace, type CsvRace, type Race } from '@/lib/api'
-import { Spinner, ErrorBox, TimeInput } from '@/components/bits'
+import { fetchRaces, parseRhkycCsv, addRace, isValidTimeInput, type CsvRace, type Race } from '@/lib/api'
+import { TimeInput } from '@/components/bits'
+import { ClButton, ClNotice, ClPageHeader, ClSkeleton, ClStatus } from '@/components/CrewlistUI'
+import { previewCsvRows, previewRaces } from '@/pages/adminPreviewData'
 
-export default function AdminImport() {
-  const [existing, setExisting] = useState<Race[] | null>(null)
-  const [err, setErr] = useState<string | null>(null)
-  const [rows, setRows] = useState<CsvRace[] | null>(null)
-  const [fileName, setFileName] = useState('')
+export type AdminImportPreview = 'default' | 'loading' | 'error' | 'parsed' | 'invalid' | 'done'
+
+export default function AdminImport({ preview }: { preview?: AdminImportPreview }) {
+  const [existing, setExisting] = useState<Race[] | null>(() => preview && preview !== 'loading' && preview !== 'error' ? [...previewRaces] : null)
+  const [err, setErr] = useState<string | null>(preview === 'error' ? 'Synthetic calendar load failure.' : null)
+  const [rows, setRows] = useState<CsvRace[] | null>(() => preview === 'parsed' || preview === 'invalid'
+    ? previewCsvRows.map((row, index) => ({ ...row, startTime: preview === 'invalid' && index === 0 ? '25:99' : row.startTime }))
+    : null)
+  const [fileName, setFileName] = useState(preview === 'parsed' || preview === 'invalid' ? 'synthetic-rhkyc-calendar.csv' : '')
   const [busy, setBusy] = useState(false)
-  const [done, setDone] = useState<number | null>(null)
+  const [done, setDone] = useState<number | null>(preview === 'done' ? 2 : null)
 
   useEffect(() => {
-    fetchRaces().then(setExisting).catch(e => setErr(e.message))
-  }, [])
+    if (!preview) fetchRaces().then(setExisting).catch(e => setErr(e.message))
+  }, [preview])
 
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]
@@ -33,8 +39,17 @@ export default function AdminImport() {
     setBusy(true)
     setErr(null)
     try {
+      const invalid = chosen.find(r => !isValidTimeInput(r.startTime))
+      if (invalid) {
+        throw new Error(`Invalid Start Time "${invalid.startTime}" for "${invalid.name}" — use 24-hour HH:MM, for example 13:45.`)
+      }
+      if (preview) {
+        setDone(chosen.length)
+        setRows(null)
+        return
+      }
       for (const r of chosen) {
-        await addRace(r.name, r.date, { startTime: r.startTime, location: r.location })   // sequential: keeps failures attributable
+        await addRace(r.name, r.date, { startTime: r.startTime, location: r.location })
       }
       setDone(chosen.length)
       setRows(null)
@@ -43,64 +58,67 @@ export default function AdminImport() {
   }
 
   return (
-    <main className="page page-wide flex-1 py-5 space-y-5 fade-in w-full mx-auto">
-      <div>
-        <h1 className="font-semibold" style={{ fontSize: 22 }}>Import race calendar</h1>
-        <p className="text-sm mt-0.5" style={{ color: 'hsl(var(--slate))' }}>
-          Upload the RHKYC calendar CSV (Google Calendar export: Subject, Start Date DD/MM/YYYY, Start Time, Location…).
-          Race-management duty rows and races you already have are left out automatically. Start time and location are optional.
-        </p>
-      </div>
+    <main className="cl-container cl-admin-main">
+      <ClPageHeader
+        eyebrow="RHKYC calendar"
+        title="Import race calendar"
+        description="Upload a Google Calendar CSV with Subject, Start Date (DD/MM/YYYY), Start Time and Location. Duplicates and race-management duty rows are excluded automatically."
+      />
 
-      {err && <ErrorBox message={err} />}
-
-      {!existing && !err && <Spinner />}
+      {err && <ClNotice tone="error" title="Import needs attention">{err}</ClNotice>}
+      {!existing && !err && <div className="cl-panel cl-admin-state"><ClSkeleton rows={2} label="Loading existing races" /></div>}
 
       {existing && (
-        <label className="panel p-6 text-center block cursor-pointer hover:bg-[hsl(var(--tint))] transition-colors">
-          <input type="file" accept=".csv,text/csv" className="sr-only" onChange={onFile} />
-          <span className="font-medium">Choose CSV file</span>
-          <span className="block text-sm mt-1" style={{ color: 'hsl(var(--slate))' }}>
-            {fileName || 'rhkyc-ruffian-calendar.csv'}
-          </span>
+        <label className="cl-file-drop cl-admin-file-drop">
+          <input type="file" accept=".csv,text/csv" className="cl-sr-only" onChange={onFile} />
+          <span className="cl-file-drop__icon" aria-hidden="true">↑</span>
+          <strong>Choose RHKYC CSV file</strong>
+          <span>{fileName || 'Subject, Start Date, Start Time and Location columns'}</span>
         </label>
       )}
 
+      {done !== null && (
+        <ClNotice tone="success" title={`Imported ${done} race${done === 1 ? '' : 's'}`}>{preview ? 'Synthetic preview only — no races were created or changed.' : 'They\'re live on the public schedule and signup form now.'}</ClNotice>
+      )}
+
       {rows && (
-        <>
-          <p className="text-sm" style={{ color: 'hsl(var(--slate))' }}>
-            {rows.length} rows parsed · <strong className="text-foreground">{chosen.length} to import</strong> ·{' '}
-            {rows.filter(r => r.duplicate).length} duplicates skipped ·{' '}
-            {rows.filter(r => /race management/i.test(r.name)).length} duty rows skipped.
-            Untick anything you don't want.
-          </p>
-          <div className="panel divide-y divide-[hsl(var(--frost))] max-h-[32rem] overflow-y-auto">
+        <section className="cl-admin-import-review">
+          <div className="cl-admin-import-summary">
+            <div><strong>{chosen.length}</strong><span>to import</span></div>
+            <div><strong>{rows.length}</strong><span>rows parsed</span></div>
+            <div><strong>{rows.filter(r => r.duplicate).length}</strong><span>duplicates skipped</span></div>
+            <div><strong>{rows.filter(r => /race management/i.test(r.name)).length}</strong><span>duty rows skipped</span></div>
+          </div>
+          <p className="cl-admin-help">Review each row and untick anything you do not want. Start time and location are optional.</p>
+          <div className="cl-panel cl-admin-import-list">
             {rows.map((r, i) => (
-              <div key={i} className="p-3 space-y-3" style={r.duplicate ? { opacity: 0.45 } : {}}>
-                <div className="flex items-center gap-3">
+              <div key={`${r.date}-${r.name}`} className={`cl-admin-import-row ${r.duplicate ? 'cl-admin-import-row--duplicate' : ''}`}>
+                <div className="cl-admin-import-row__top">
                   <input
-                    type="checkbox" className="check flex-none" checked={r.include} disabled={busy}
+                    type="checkbox" className="cl-admin-check" checked={r.include} disabled={busy}
                     aria-label={`Include ${r.name}`}
                     onChange={() => setRows(rs => rs!.map((x, j) => j === i ? { ...x, include: !x.include } : x))}
                   />
-                  <span className="mono text-sm flex-none" style={{ width: 86, color: 'hsl(var(--slate))' }}>{r.date}</span>
-                  <span className="flex-1 min-w-0 font-medium break-words">{r.name}</span>
-                  {r.duplicate && <span className="chip flex-none" style={{ minHeight: 24, fontSize: 11.5 }}>have it</span>}
+                  <span className="cl-mono">{r.date}</span>
+                  <strong>{r.name}</strong>
+                  {r.duplicate && <ClStatus>Already added</ClStatus>}
+                  {!r.duplicate && !r.include && <ClStatus tone="warning">Excluded</ClStatus>}
                 </div>
                 {r.include && (
-                  <div className="grid gap-2 sm:grid-cols-[10rem_1fr] pl-0 sm:pl-8">
-                    <label className="space-y-1">
-                      <span className="text-xs font-medium">Start time <span style={{ color: 'hsl(var(--slate))' }}>(optional)</span></span>
+                  <div className="cl-admin-import-row__fields">
+                    <label className="cl-field">
+                      <span className="cl-field__label-row"><span className="cl-label">Start time</span><span className="cl-field__optional">Optional</span></span>
                       <TimeInput
                         value={r.startTime} disabled={busy}
                         ariaLabel={`Start time for ${r.name}, optional, 24-hour HH:MM`}
-                        onChange={startTime => setRows(rs => rs!.map((x, j) => j === i ? { ...x, startTime } : x))}
+                        onChange={value => setRows(rs => rs!.map((x, j) => j === i ? { ...x, startTime: value } : x))}
                       />
+                      <span className="cl-field__hint">24-hour HH:MM</span>
                     </label>
-                    <label className="space-y-1">
-                      <span className="text-xs font-medium">Location <span style={{ color: 'hsl(var(--slate))' }}>(optional)</span></span>
+                    <label className="cl-field">
+                      <span className="cl-field__label-row"><span className="cl-label">Location</span><span className="cl-field__optional">Optional</span></span>
                       <input
-                        className="input" value={r.location} disabled={busy} placeholder="e.g. Victoria Harbour"
+                        className="cl-input" value={r.location} disabled={busy} placeholder="e.g. Victoria Harbour"
                         aria-label={`Location for ${r.name}, optional`}
                         onChange={e => setRows(rs => rs!.map((x, j) => j === i ? { ...x, location: e.target.value } : x))}
                       />
@@ -110,17 +128,8 @@ export default function AdminImport() {
               </div>
             ))}
           </div>
-          <button className="btn-primary w-full" disabled={busy || chosen.length === 0} onClick={runImport}>
-            {busy ? `Importing…` : `Import ${chosen.length} race${chosen.length === 1 ? '' : 's'}`}
-          </button>
-        </>
-      )}
-
-      {done !== null && (
-        <div className="panel p-6 text-center fade-in">
-          <p className="font-medium">Imported {done} race{done === 1 ? '' : 's'} ✓</p>
-          <p className="text-sm mt-1" style={{ color: 'hsl(var(--slate))' }}>They're live on the public schedule and signup form now.</p>
-        </div>
+          <div className="cl-admin-import-action"><ClButton full loading={busy} disabled={chosen.length === 0} onClick={runImport}>Import {chosen.length} race{chosen.length === 1 ? '' : 's'}</ClButton></div>
+        </section>
       )}
     </main>
   )
