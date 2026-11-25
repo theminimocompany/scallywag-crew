@@ -471,3 +471,129 @@
   .cl-auth-heading { margin-bottom: 24px; }
   .cl-auth-heading h1, .cl-auth-loading h1 { font-size: 30px; }
 }
+
+
+/* Step 3B registration, account home and four-step onboarding. */
+.cl-auth--wide .cl-auth-main { max-width: 780px; }
+.cl-auth .cl-notice__body strong { display: inline; margin: 0; }
+.cl-account-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-bottom: 28px;
+  padding: 4px;
+  border: 1px solid var(--cl-line);
+  border-radius: 9px;
+  background: #f2f6fc;
+}
+.cl-account-switch > button {
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--cl-slate);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.cl-account-switch > button:hover { color: var(--cl-accent); }
+.cl-account-switch > button[aria-current='page'] { border-color: var(--cl-line); background: var(--cl-surface); color: var(--cl-ink); box-shadow: 0 1px 3px rgb(16 24 40 / 0.06); }
+.cl-team-link { display: grid; gap: 10px; min-width: 0; padding: 16px; border: 1px solid var(--cl-line); border-radius: var(--cl-radius-control); background: #f8fbff; }
+.cl-team-link__top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.cl-team-link__address { min-width: 0; margin: 0; font-family: var(--cl-font-mono); font-size: 12px; line-height: 1.65; overflow-wrap: anywhere; word-break: break-word; }
+.cl-team-link__address strong { color: var(--cl-accent); font-weight: 600; }
+.cl-team-link > p:not(.cl-label):not(.cl-team-link__address) { margin: 0; color: var(--cl-slate); font-size: 12px; line-height: 1.55; }
+.cl-team-link > .cl-button { justify-self: start; }
+.cl-team-link > .cl-button--full { justify-self: stretch; margin-top: 4px; }
+.cl-signed-in-note { margin: 0; padding: 14px 16px; border-radius: var(--cl-radius-control); background: var(--cl-accent-soft); color: var(--cl-slate); font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+.cl-signed-in-note strong { color: var(--cl-ink); }
+.cl-form-footnote { margin: -4px 0 0; color: var(--cl-muted); font-size: 12px; text-align: center; }
+.cl-join-simulation, .cl-account-preview-result, .cl-onboard-preview-result { margin-bottom: 18px; }
+
+.cl-account-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
+.cl-account-heading .cl-eyebrow { margin-bottom: 12px; }
+.cl-account-heading h1 { margin: 0; font-size: clamp(30px, 4vw, 40px); line-height: 1.12; letter-spacing: -0.045em; }
+.cl-account-heading > div > p:last-child { margin: 12px 0 0; color: var(--cl-slate); font-size: 14px; overflow-wrap: anywhere; }
+.cl-account-heading > div > p:last-child strong { color: var(--cl-ink); font-weight: 500; }
+.cl-account-heading > .cl-button { flex: none; }
+.cl-team-list { display: grid; gap: 12px; }
+.cl-team-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  width: 100%;
+  min-height: 88px;
+  padding: 18px;
+  border: 1px solid var(--cl-line);
+  border-radius: 9px;
+  background: var(--cl-surface);
+  color: var(--cl-ink);
+  text-align: left;
+  transition: border-color 150ms var(--cl-ease), background-color 150ms var(--cl-ease);
+}
+.cl-team-card:hover { border-color: var(--cl-line-strong); background: var(--cl-accent-soft); }
+.cl-team-card__main { display: grid; gap: 6px; min-width: 0; }
+.cl-team-card__main > strong { font-size: 16px; overflow-wrap: anywhere; }
+.cl-team-card__main > span { color: var(--cl-slate); font-size: 12px; overflow-wrap: anywhere; }
+.cl-team-card__action { display: flex; align-items: center; flex: none; gap: 16px; color: var(--cl-accent); font-size: 13px; font-weight: 600; }
+.cl-account-footnote { margin: 22px 0 0; color: var(--cl-muted); font-size: 12px; line-height: 1.6; }
+
+.cl-onboard-identity { display: grid; justify-items: end; max-width: 48%; line-height: 1.4; text-align: right; }
+.cl-onboard-identity strong { max-width: 100%; overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.cl-onboard-identity > span { max-width: 100%; overflow: hidden; color: var(--cl-slate); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.cl-onboard-progress { display: flex; gap: 8px; margin-bottom: 20px; }
+.cl-onboard-progress > span { flex: 1; height: 5px; border-radius: 999px; background: var(--cl-line); }
+.cl-onboard-progress > .cl-onboard-progress__done { background: var(--cl-accent); }
+.cl-onboard-step { margin-bottom: 28px; }
+.cl-onboard-heading { margin-bottom: 28px; }
+.cl-onboard-heading h1 { margin: 0; font-size: clamp(30px, 4vw, 40px); line-height: 1.12; letter-spacing: -0.045em; overflow-wrap: anywhere; }
+.cl-onboard-heading > p { max-width: 62ch; margin: 12px 0 0; color: var(--cl-slate); font-size: 15px; line-height: 1.65; }
+.cl-onboard-error { margin-bottom: 20px; }
+.cl-sample-link { justify-self: start; min-height: 44px; margin: -14px 0 -8px; padding: 0; border: 0; background: transparent; color: var(--cl-accent); font-size: 13px; font-weight: 600; }
+.cl-sample-link:hover { color: var(--cl-accent-hover); }
+.cl-file-drop {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 164px;
+  padding: 24px;
+  border: 1px dashed var(--cl-line-strong);
+  border-radius: 9px;
+  background: #f8fbff;
+  color: var(--cl-ink);
+  text-align: center;
+  transition: border-color 150ms var(--cl-ease), background-color 150ms var(--cl-ease);
+}
+.cl-file-drop:hover { border-color: var(--cl-accent); background: var(--cl-accent-soft); }
+.cl-file-drop__icon { display: grid; place-content: center; width: 38px; height: 38px; margin-bottom: 4px; border-radius: 50%; background: var(--cl-accent-soft); color: var(--cl-accent); font-family: var(--cl-font-mono); font-size: 21px; }
+.cl-file-drop > strong { font-size: 14px; }
+.cl-file-drop > span:last-child { max-width: 100%; color: var(--cl-slate); font-size: 12px; line-height: 1.55; overflow-wrap: anywhere; }
+.cl-import-summary { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.cl-import-summary .cl-eyebrow { margin: 0; }
+.cl-import-races { padding: 4px 16px; }
+.cl-import-race { display: grid; grid-template-columns: 94px minmax(0, 1fr) auto; align-items: center; gap: 16px; min-height: 76px; padding: 12px 0; }
+.cl-import-race__date { color: var(--cl-slate); font-size: 11px; }
+.cl-import-race strong { display: block; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
+.cl-import-race p { margin: 5px 0 0; color: var(--cl-slate); font-size: 12px; }
+.cl-crew-textarea { min-height: 220px; resize: vertical; line-height: 1.65; }
+.cl-crew-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.cl-crew-summary > span:last-child { color: var(--cl-slate); font-size: 12px; }
+.cl-onboard-note { margin: -4px 0 0; color: var(--cl-muted); font-size: 12px; line-height: 1.6; }
+.cl-onboard-success-mark { display: grid; place-content: center; width: 48px; height: 48px; margin-bottom: 24px; border-radius: 50%; background: var(--cl-success-soft); color: var(--cl-success); font-size: 25px; font-weight: 600; }
+
+@media (max-width: 640px) {
+  .cl-account-switch { margin-bottom: 24px; }
+  .cl-account-switch > button { font-size: 12px; }
+  .cl-account-heading { align-items: stretch; flex-direction: column; gap: 20px; }
+  .cl-account-heading > .cl-button { width: 100%; }
+  .cl-team-card { align-items: flex-start; flex-direction: column; gap: 14px; }
+  .cl-team-card__action { justify-content: space-between; width: 100%; }
+  .cl-onboard-identity { max-width: 52%; }
+  .cl-import-race { grid-template-columns: 82px minmax(0, 1fr); gap: 12px; }
+  .cl-import-race > .cl-status { grid-column: 2; }
+}
