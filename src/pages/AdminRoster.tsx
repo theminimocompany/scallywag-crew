@@ -266,7 +266,6 @@ export default function AdminRoster({ crewId, preview }: { crewId?: string; prev
                 <span className="cl-admin-roster-row__identity"><strong>{c.name}</strong><small>{c.phone ?? 'No phone recorded'}</small></span>
                 {!c.is_approved && <ClStatus tone="warning">Pending</ClStatus>}
                 <span className="cl-admin-roster-row__counts"><ClStatus>{n.a} available</ClStatus><ClStatus tone="selected">{n.s} selected</ClStatus></span>
-                <span className="cl-admin-row-arrow" aria-hidden="true">→</span>
               </button>
             )
           })}

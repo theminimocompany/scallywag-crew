@@ -595,7 +595,7 @@
   .cl-account-switch { margin-bottom: 24px; }
   .cl-account-switch > button { font-size: 12px; }
   .cl-account-heading { align-items: stretch; flex-direction: column; gap: 20px; }
-  .cl-account-heading > .cl-button { width: 100%; }
+  大发快三开奖结果.cl-account-heading > .cl-button { width: 100%; }
   .cl-team-card { align-items: flex-start; flex-direction: column; gap: 14px; }
   .cl-team-card__action { justify-content: space-between; width: 100%; }
   .cl-onboard-identity { max-width: 52%; }
@@ -696,8 +696,6 @@
 .cl-admin-race-row__content > strong { display: block; font-size: 15px; line-height: 1.45; letter-spacing: -0.015em; overflow-wrap: anywhere; }
 .cl-admin-race-row__content > p { margin: 5px 0 0; color: var(--cl-slate); font-size: 12px; line-height: 1.55; }
 .cl-admin-race-row__counts { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
-.cl-admin-row-arrow { color: var(--cl-accent); font-size: 18px; transition: transform 150ms var(--cl-ease); }
-.cl-admin-roster-row:hover .cl-admin-row-arrow { transform: translateX(3px); }
 .cl-admin-past { opacity: 0.58; }
 .cl-admin-race-detail { padding-bottom: 168px; }
 .cl-admin-race-detail-meta { display: flex; align-items: center; gap: 18px; margin-top: -12px; }
