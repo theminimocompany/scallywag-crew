@@ -595,7 +595,7 @@
   .cl-account-switch { margin-bottom: 24px; }
   .cl-account-switch > button { font-size: 12px; }
   .cl-account-heading { align-items: stretch; flex-direction: column; gap: 20px; }
-  大发快三开奖结果.cl-account-heading > .cl-button { width: 100%; }
+  .cl-account-heading > .cl-button { width: 100%; }
   .cl-team-card { align-items: flex-start; flex-direction: column; gap: 14px; }
   .cl-team-card__action { justify-content: space-between; width: 100%; }
   .cl-onboard-identity { max-width: 52%; }
