@@ -67,7 +67,7 @@ export default function ForgotPassword({ preview }: { preview?: ForgotPreview })
       {sent ? (
         <div className="cl-auth-stack">
           <ClNotice tone="success" title="Check your inbox">
-            If an account exists for <span className="cl-auth-email">{email.trim()}</span>, a reset email is on its way. Open the link in this same browser.
+            If an account exists for <span className="cl-auth-email">{email.trim()}</span>, a reset email is on its way. Open the link in this same browser. If it doesn’t arrive within a few minutes, check your spam or junk folder.
           </ClNotice>
           <ClButton variant="secondary" full onClick={() => {
             setSent(false)
