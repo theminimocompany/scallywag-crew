@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { useHash, segments, navigate } from '@/lib/hash'
-import { TENANT_SLUG, TEAM_NAME } from '@/lib/config'
+import { TEAM_NAME } from '@/lib/config'
 import { AdminHeader } from '@/components/chrome'
 import { Spinner } from '@/components/bits'
 import PublicSchedule from '@/pages/PublicSchedule'
@@ -15,8 +15,8 @@ import AdminImport from '@/pages/AdminImport'
 import AdminSettings from '@/pages/AdminSettings'
 import AdminAccessGate from '@/pages/AdminAccessGate'
 import AdminPreview from '@/pages/AdminPreview'
-import ConsoleTeams from '@/pages/ConsoleTeams'
-import ConsoleTeamDetail from '@/pages/ConsoleTeamDetail'
+import ConsoleTeams, { type ConsoleTeamsPreview } from '@/pages/ConsoleTeams'
+import ConsoleTeamDetail, { type ConsoleTeamPreview } from '@/pages/ConsoleTeamDetail'
 import Join, { type JoinPreview } from '@/pages/Join'
 import AccountHome, { type AccountHomePreview } from '@/pages/AccountHome'
 import Onboard, { type OnboardPreview } from '@/pages/Onboard'
@@ -25,6 +25,7 @@ import InviteAuth, { type InviteAuthPreview } from '@/pages/InviteAuth'
 import ForgotPassword from '@/pages/ForgotPassword'
 import ResetPassword from '@/pages/ResetPassword'
 import DesignFoundation from '@/pages/DesignFoundation'
+import { SoftwareHome } from '@/pages/HomeMockups'
 import { getTenant, clearTenantCache } from '@/lib/api'
 import { setTeamName, setTenantSlug } from '@/lib/tenant'
 
@@ -153,17 +154,6 @@ export default function App() {
     return () => { cancelled = true }
   }, [slug])
 
-  // default route → Scallywag public schedule (the owner's team). Emailed
-  // callbacks must finish authentication before any tenant route is selected.
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const authCallback = params.has('code')
-      || params.get('auth_callback') === '1'
-      || params.get('recovery') === '1'
-      || params.has('invite')
-    if (seg.length === 0 && !authCallback) navigate(`/t/${TENANT_SLUG}/schedule`)
-  }, [seg.length])
-
   const signOut = async () => { await supabase.auth.signOut() }
   const center = (node: React.ReactNode) => <div className="min-h-100dvh grid place-content-center">{node}</div>
 
@@ -254,6 +244,27 @@ export default function App() {
   }
   if (seg[0] === 'mockups' && seg[1] === 'signup') return <PublicSignup key="signup-open-preview" preview />
   if (seg[0] === 'mockups' && seg[1] === 'schedule') return <PublicSchedule preview />
+  if (seg[0] === 'mockups' && seg[1] === 'home') return <SoftwareHome />
+  if (seg[0] === 'mockups' && seg[1] === 'console') {
+    const page = seg[2] ?? 'teams'
+    const state = seg[3] ?? 'ready'
+    if (page === 'team') {
+      const allowed: ConsoleTeamPreview[] = ['ready', 'loading', 'error', 'denied', 'confirm', 'notice', 'busy']
+      const preview = allowed.includes(state as ConsoleTeamPreview) ? state as ConsoleTeamPreview : 'ready'
+      return (
+        <ConsoleTeamDetail
+          key={`console-team-${preview}`}
+          teamId="preview-sea-wolf"
+          email="console.owner@example.com"
+          onSignOut={() => {}}
+          preview={preview}
+        />
+      )
+    }
+    const allowed: ConsoleTeamsPreview[] = ['ready', 'loading', 'error', 'denied', 'empty']
+    const preview = allowed.includes(state as ConsoleTeamsPreview) ? state as ConsoleTeamsPreview : 'ready'
+    return <ConsoleTeams key={`console-teams-${preview}`} email="console.owner@example.com" onSignOut={() => {}} preview={preview} />
+  }
   if (seg[0] === 'mockups') return <DesignFoundation />
 
   // ---- Crewlist console (super admin) ----
@@ -292,6 +303,17 @@ export default function App() {
       return <InviteAuth token={token} />
     }
     return <AcceptInvite token={token} email={session.user.email ?? ''} onSignOut={signOut} />
+  }
+
+  // The neutral Crewlist homepage lives at the root. Team schedules retain
+  // their direct /t/<slug>/schedule links; Auth callbacks still finish first.
+  if (seg.length === 0) {
+    const params = new URLSearchParams(window.location.search)
+    const authCallback = params.has('code')
+      || params.get('auth_callback') === '1'
+      || params.get('recovery') === '1'
+      || params.has('invite')
+    if (!authCallback) return <SoftwareHome production />
   }
 
   // ---- tenant routes: /t/<slug>/... ----
