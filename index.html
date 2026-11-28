@@ -3,6 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <script>
+      // Move legacy GitHub Pages visitors before the browser requests root-relative assets.
+      // Query strings and Auth fragments survive the redirect unchanged.
+      if (window.location.hostname === 'theminimocompany.github.io') {
+        const legacyBase = '/scallywag-crew/'
+        const path = window.location.pathname.startsWith(legacyBase)
+          ? window.location.pathname.slice(legacyBase.length)
+          : ''
+        window.location.replace(`https://crewlist.cloud/${path}${window.location.search}${window.location.hash}`)
+      }
+    </script>
     <title>Crewlist</title>
   </head>
   <body>

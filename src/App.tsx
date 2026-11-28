@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
-import { useHash, segments, navigate } from '@/lib/hash'
+import { useHash, segments, navigate, currentRoute } from '@/lib/hash'
 import { TEAM_NAME } from '@/lib/config'
 import { AdminHeader } from '@/components/chrome'
 import { Spinner } from '@/components/bits'
@@ -35,23 +35,23 @@ type TenantLoad =
   | { state: 'ok'; status: string; id: string }
 
 export default function App() {
-  const hash = useHash()
+  const route = useHash()
   const [session, setSession] = useState<Session | null>(null)
   const [authReady, setAuthReady] = useState(false)
   const [tenantLoad, setTenantLoad] = useState<TenantLoad>({ state: 'loading' })
 
   useEffect(() => {
-    const previewRoute = segments(window.location.hash)
+    const previewRoute = segments(currentRoute())
     if (previewRoute[0] === 'mockups' && previewRoute[1] === 'admin') return
     // PKCE emails carry ?code=…. Implicit emails are marked with
     // ?auth_callback=1 before Supabase consumes their #access_token=… fragment.
     const params = new URLSearchParams(window.location.search)
     const inviteToken = params.get('invite')
     const inviteReturn = inviteToken && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(inviteToken)
-      ? `#/invite/${inviteToken}`
+      ? `/invite/${inviteToken}`
       : null
     const fromEmailLink = params.has('code') || params.get('auth_callback') === '1' || !!inviteReturn
-    const fromRecoveryLink = segments(window.location.hash)[0] === 'reset-password'
+    const fromRecoveryLink = segments(currentRoute())[0] === 'reset-password'
       || params.get('recovery') === '1'
     let emailReturnHandled = false
 
@@ -133,7 +133,7 @@ export default function App() {
     }
   }, [])
 
-  const seg = segments(hash)
+  const seg = segments(route)
   const slug = seg[0] === 't' ? seg[1] : null
 
   // Load whichever team the URL points at (multi-tenant).
@@ -271,7 +271,7 @@ export default function App() {
   if (seg[0] === 'console') {
     if (!authReady) return center(<Spinner />)
     if (!session) {
-      sessionStorage.setItem('crewlist_auth_return', window.location.hash || '#/console')
+      sessionStorage.setItem('crewlist_auth_return', currentRoute())
       return <AdminLogin crewlist />
     }
     const email = session.user.email ?? ''
@@ -288,7 +288,7 @@ export default function App() {
   if (seg[0] === 'login') {
     if (!authReady) return center(<Spinner />)
     if (!session) {
-      sessionStorage.setItem('crewlist_auth_return', '#/login')
+      sessionStorage.setItem('crewlist_auth_return', '/login')
       return <AdminLogin crewlist />
     }
     return <AccountHome email={session.user.email ?? ''} />
@@ -299,7 +299,7 @@ export default function App() {
     if (!authReady) return center(<Spinner />)
     const token = seg[1] ?? ''
     if (!session) {
-      sessionStorage.setItem('crewlist_auth_return', window.location.hash || `#/invite/${token}`)
+      sessionStorage.setItem('crewlist_auth_return', currentRoute())
       return <InviteAuth token={token} />
     }
     return <AcceptInvite token={token} email={session.user.email ?? ''} onSignOut={signOut} />
@@ -358,7 +358,7 @@ export default function App() {
   if (page === 'onboard') {
     if (!authReady) return center(<Spinner />)
     if (!session) {
-      sessionStorage.setItem('crewlist_auth_return', window.location.hash)
+      sessionStorage.setItem('crewlist_auth_return', currentRoute())
       return <AdminLogin crewlist />
     }
     return (

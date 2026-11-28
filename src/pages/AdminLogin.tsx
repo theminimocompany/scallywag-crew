@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { navigate } from '@/lib/hash'
+import { currentRoute, navigate } from '@/lib/hash'
 import { currentTenantSlug, useTeamName } from '@/lib/tenant'
 import { ClAuthShell, ClButton, ClInput, ClNotice } from '@/components/CrewlistUI'
 
@@ -41,7 +41,7 @@ export default function AdminLogin({ crewlist = false, preview }: { crewlist?: b
       setPreviewAction('Password recovery is previewed separately. No return destination or recovery storage was changed.')
       return
     }
-    sessionStorage.setItem('crewlist_auth_return', window.location.hash || '#/login')
+    sessionStorage.setItem('crewlist_auth_return', currentRoute())
     sessionStorage.removeItem('crewlist_recovery_email')
     sessionStorage.removeItem('crewlist_recovery_invite')
     navigate('/forgot-password')

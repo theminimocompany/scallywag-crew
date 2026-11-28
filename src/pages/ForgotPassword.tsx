@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { navigate } from '@/lib/hash'
+import { appUrl, navigate } from '@/lib/hash'
 import { ClAuthShell, ClButton, ClInput, ClNotice } from '@/components/CrewlistUI'
 
 type ForgotPreview = 'default' | 'loading' | 'error' | 'sent' | 'invitation'
@@ -22,7 +22,7 @@ export default function ForgotPassword({ preview }: { preview?: ForgotPreview })
       setPreviewAction('Sign-in navigation is disabled in this isolated preview. Your return destination was not changed.')
       return
     }
-    navigate(sessionStorage.getItem('crewlist_auth_return') || '#/login')
+    navigate(sessionStorage.getItem('crewlist_auth_return') || '/login')
   }
 
   async function submit(e: React.FormEvent) {
@@ -35,10 +35,9 @@ export default function ForgotPassword({ preview }: { preview?: ForgotPreview })
     }
     setBusy(true)
     setErr(null)
-    // Keep the callback out of the hash route. Implicit recovery returns
-    // #access_token=… and PKCE returns ?code=…; both would corrupt a
-    // #/reset-password destination. App.tsx routes to the form after auth.
-    const redirect = new URL(`${window.location.origin}${window.location.pathname}`)
+    // Return to the application root with explicit callback markers. App.tsx
+    // resolves the Auth session before routing to the clean reset-password path.
+    const redirect = new URL(appUrl())
     redirect.searchParams.set('recovery', '1')
     if (lockedEmail && validRecoveryInvite) redirect.searchParams.set('invite', recoveryInvite)
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {

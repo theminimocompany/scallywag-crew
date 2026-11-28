@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { navigate } from '@/lib/hash'
+import { appUrl, currentRoute, navigate } from '@/lib/hash'
 import { fetchInviteEmail } from '@/lib/api'
 import { ClAuthShell, ClButton, ClInput, ClNotice } from '@/components/CrewlistUI'
 
@@ -91,12 +91,14 @@ export default function InviteAuth({ token, preview }: { token: string; preview?
     }
 
     setBusy(true)
+    const redirect = new URL(appUrl())
+    redirect.searchParams.set('invite', token)
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { full_name: fullName.trim() },
-        emailRedirectTo: `${window.location.origin}${window.location.pathname}?invite=${encodeURIComponent(token)}`,
+        emailRedirectTo: redirect.toString(),
       },
     })
     setBusy(false)
@@ -133,7 +135,7 @@ export default function InviteAuth({ token, preview }: { token: string; preview?
       setPreviewAction('Password recovery is disabled in this isolated preview. No return, email or invitation storage was changed.')
       return
     }
-    sessionStorage.setItem('crewlist_auth_return', window.location.hash)
+    sessionStorage.setItem('crewlist_auth_return', currentRoute())
     sessionStorage.setItem('crewlist_recovery_email', email)
     sessionStorage.setItem('crewlist_recovery_invite', token)
     navigate('/forgot-password')

@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config'
+import { normalizeLegacyUrl } from './hash'
 
 // Implicit recovery callbacks append #access_token=… to the redirect URL.
 // Older reset emails placed that fragment after our hash route, producing
@@ -21,5 +22,9 @@ if (window.location.hash.startsWith('#access_token=')) {
   url.searchParams.set('auth_callback', '1')
   window.history.replaceState(null, '', url)
 }
+
+// Old #/t/..., #/invite/... and #/console links become clean pathnames only
+// after Auth-specific fragments above have been identified and preserved.
+normalizeLegacyUrl()
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)

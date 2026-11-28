@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
-import { navigate } from '@/lib/hash'
+import { appUrl, navigate } from '@/lib/hash'
 import { ClAuthShell, ClButton, ClInput, ClNotice, ClStatus } from '@/components/CrewlistUI'
 import { checkSlugAvailable, createTeam } from '@/lib/api'
 
@@ -115,7 +115,7 @@ export default function Join({ session, preview }: { session: Session | null; pr
     if (available === false) return setErr('That team link is taken — try another.')
     if (!preview) {
       sessionStorage.setItem(PENDING_KEY, JSON.stringify({ name: name.trim(), slug }))
-      sessionStorage.setItem('crewlist_auth_return', '#/join')
+      sessionStorage.setItem('crewlist_auth_return', '/join')
     }
 
     if (signedIn) {
@@ -134,7 +134,7 @@ export default function Join({ session, preview }: { session: Session | null; pr
       email: email.trim(), password,
       options: {
         data: { full_name: fullName.trim() },
-        emailRedirectTo: `${window.location.origin}${window.location.pathname}`,
+        emailRedirectTo: appUrl(),
       },
     })
     setBusy(false)
@@ -189,7 +189,7 @@ export default function Join({ session, preview }: { session: Session | null; pr
           <div className="cl-team-link">
             <div className="cl-team-link__top">
               <span className="cl-team-link__address">
-                {window.location.host}/#/t/<strong>{slug || '…'}</strong>
+                {window.location.host}{new URL(appUrl()).pathname}t/<strong>{slug || '…'}</strong>
               </span>
               {validSlug && available === null && <ClStatus label="Checking team link">Checking…</ClStatus>}
               {validSlug && available === true && <ClStatus tone="open">Available</ClStatus>}

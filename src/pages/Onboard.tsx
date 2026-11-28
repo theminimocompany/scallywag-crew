@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { navigate } from '@/lib/hash'
+import { appUrl, navigate } from '@/lib/hash'
 import { ClAuthShell, ClButton, ClInput, ClNotice, ClStatus } from '@/components/CrewlistUI'
 import {
   getTenant, updateTeamName, fetchRaces, parseRhkycCsv,
@@ -88,7 +88,7 @@ export default function Onboard({ email, preview }: { email: string; preview?: O
 
   const crewNames = [...new Set(crewText.split('\n').map(s => s.trim()).filter(Boolean))]
   const racesToImport = (csvRaces ?? []).filter(r => r.include)
-  const publicLink = tenant ? `${window.location.origin}${window.location.pathname}#/t/${tenant.slug}/schedule` : ''
+  const publicLink = tenant ? appUrl(`/t/${tenant.slug}/schedule`) : ''
 
   function downloadSample() {
     const blob = new Blob([SAMPLE_CSV], { type: 'text/csv' })

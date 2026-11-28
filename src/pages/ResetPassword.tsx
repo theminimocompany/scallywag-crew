@@ -59,7 +59,7 @@ export default function ResetPassword({
       setPreviewAction('Sign-in navigation is disabled in this isolated preview. Your return destination was not changed.')
       return
     }
-    navigate(sessionStorage.getItem('crewlist_auth_return') || '#/login')
+    navigate(sessionStorage.getItem('crewlist_auth_return') || '/login')
   }
 
   function continueToDestination() {
@@ -67,7 +67,7 @@ export default function ResetPassword({
       setPreviewAction('Continue is disabled in this isolated preview. No recovery keys were cleared and no live page was opened.')
       return
     }
-    const back = sessionStorage.getItem('crewlist_auth_return') || '#/login'
+    const back = sessionStorage.getItem('crewlist_auth_return') || '/login'
     sessionStorage.removeItem('crewlist_auth_return')
     sessionStorage.removeItem('crewlist_recovery_email')
     sessionStorage.removeItem('crewlist_recovery_invite')

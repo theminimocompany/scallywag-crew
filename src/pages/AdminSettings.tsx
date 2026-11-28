@@ -6,7 +6,7 @@ import {
 } from '@/lib/api'
 import { supabase } from '@/lib/supabase'
 import { setTeamName } from '@/lib/tenant'
-import { navigate } from '@/lib/hash'
+import { appUrl, navigate } from '@/lib/hash'
 import { RaceMeta } from '@/components/bits'
 import { ClButton, ClInput, ClNotice, ClPageHeader, ClSkeleton, ClStatus } from '@/components/CrewlistUI'
 import { PREVIEW_INVITE_TOKEN, previewAdmins, previewInvites, previewRaces, previewTenant } from '@/pages/adminPreviewData'
@@ -64,7 +64,7 @@ export default function AdminSettings({ preview }: { preview?: AdminSettingsPrev
   }
   useEffect(() => {
     if (!preview) load()
-    else if (preview === 'invite') setInviteLink(`${window.location.origin}${window.location.pathname}#/invite/${PREVIEW_INVITE_TOKEN}`)
+    else if (preview === 'invite') setInviteLink(appUrl(`/invite/${PREVIEW_INVITE_TOKEN}`))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -114,7 +114,7 @@ export default function AdminSettings({ preview }: { preview?: AdminSettingsPrev
   }
 
   function linkFor(token: string): string {
-    return `${window.location.origin}${window.location.pathname}#/invite/${token}`
+    return appUrl(`/invite/${token}`)
   }
 
   async function invite(email: string) {

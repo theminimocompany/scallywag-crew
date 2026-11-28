@@ -1,22 +1,45 @@
-import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router'
 
-// Tiny hash router — immune to GitHub Pages 404s and static-preview sub-route
-// issues, since everything lives under /#/...
+const legacyPagesHost = 'theminimocompany.github.io'
+const legacyPagesBase = '/scallywag-crew/'
+
+// Retain the existing export name so this routing migration does not ripple
+// through unrelated components. React Router owns location subscriptions.
 export function useHash(): string {
-  const [hash, setHash] = useState(() => window.location.hash)
-  useEffect(() => {
-    const onChange = () => setHash(window.location.hash)
-    window.addEventListener('hashchange', onChange)
-    return () => window.removeEventListener('hashchange', onChange)
-  }, [])
-  return hash
+  return useLocation().pathname
+}
+
+export function currentRoute(): string {
+  return window.location.pathname || '/'
 }
 
 export function navigate(to: string) {
-  window.location.hash = to.startsWith('#') ? to : `#${to}`
+  const route = to.startsWith('#') ? to.slice(1) : to
+  const pathname = route.startsWith('/') ? route : `/${route}`
+  window.history.pushState(null, '', pathname)
+  window.dispatchEvent(new PopStateEvent('popstate'))
 }
 
-// Parse '#/t/scallywag/admin/races/abc' → ['t','scallywag','admin','races','abc']
-export function segments(hash: string): string[] {
-  return hash.replace(/^#/, '').split('/').filter(Boolean)
+// Convert old application routes, but never implicit Auth fragments such as
+// #access_token=...; supabase.ts handles those before calling this function.
+export function normalizeLegacyUrl() {
+  if (!window.location.hash.startsWith('#/')) return
+  const legacyRoute = window.location.hash.slice(1)
+  const legacyUrl = new URL(legacyRoute, window.location.origin)
+  const url = new URL(window.location.href)
+  const base = window.location.hostname === legacyPagesHost ? legacyPagesBase : '/'
+  url.pathname = `${base}${legacyUrl.pathname.replace(/^\/+/, '')}`
+  legacyUrl.searchParams.forEach((value, key) => url.searchParams.set(key, value))
+  url.hash = ''
+  window.history.replaceState(null, '', `${url.pathname}${url.search}`)
+}
+
+export function appUrl(route = ''): string {
+  const base = window.location.hostname === legacyPagesHost ? legacyPagesBase : '/'
+  return `${window.location.origin}${base}${route.replace(/^\/+/, '')}`
+}
+
+// Accept both current pathnames and legacy stored '#/...' destinations.
+export function segments(route: string): string[] {
+  return route.replace(/^#/, '').split('?')[0].split('/').filter(Boolean)
 }
